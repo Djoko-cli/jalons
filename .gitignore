@@ -1,0 +1,14 @@
+# Liste locale du garde (identifiants réels) : jamais commitée
+garde.local.txt
+*.local
+
+# Produits de compilation, journaux et espaces de travail
+.build/
+build/
+.swiftpm/
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+*.log
+.superpowers/
+.DS_Store
