@@ -53,6 +53,8 @@ open build/Jalons.app
 
 Then choose a spec in the menu: « Choisir une feuille de route… ».
 
+The script compiles the app icon (`Ressources/AppIcon.icon`, an Icon Composer file) with `actool`, and stops if the icon is missing. Its only layer is drawn by a script: `swift scripts/dessiner-icone.swift Ressources/AppIcon.icon/Assets/jalon.png`.
+
 ### Tests
 
 ```bash
@@ -123,6 +125,8 @@ open build/Jalons.app
 ```
 
 Choisis ensuite une spec dans le menu : « Choisir une feuille de route… ».
+
+Le script compile l'icône de l'app (`Ressources/AppIcon.icon`, un fichier Icon Composer) avec `actool`, et s'arrête si elle manque. Son unique calque est dessiné par un script : `swift scripts/dessiner-icone.swift Ressources/AppIcon.icon/Assets/jalon.png`.
 
 ### Tests
 
