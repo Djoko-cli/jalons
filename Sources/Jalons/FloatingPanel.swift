@@ -8,14 +8,19 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
     private weak var tracker: RoadmapTracker?
     private(set) var window: NSPanel?
     private let frameName: String
-    private let fallbackFrameName: String?
+    /// Places retenues sous d'autres noms, essayées dans l'ordre si la frise n'a pas encore la sienne.
+    private let fallbackFrameNames: [String]
+    /// Faux en mise au point (`-specPath`) : la place de la frise n'est pas enregistrée.
+    private let remembersFrame: Bool
     /// Rang de la frise à sa première ouverture : chaque nouvelle frise se pose à gauche de la précédente.
     private let cascadeIndex: Int
 
-    init(tracker: RoadmapTracker, frameName: String, fallbackFrameName: String?, cascadeIndex: Int) {
+    init(tracker: RoadmapTracker, frameName: String, fallbackFrameNames: [String], remembersFrame: Bool,
+         cascadeIndex: Int) {
         self.tracker = tracker
         self.frameName = frameName
-        self.fallbackFrameName = fallbackFrameName
+        self.fallbackFrameNames = fallbackFrameNames
+        self.remembersFrame = remembersFrame
         self.cascadeIndex = cascadeIndex
     }
 
@@ -64,11 +69,10 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
         if tracker?.model?.options.snapshotDirectory != nil {
             placeTopRight(panel)
         } else {
-            if !panel.setFrameUsingName(frameName),
-               !(fallbackFrameName.map { panel.setFrameUsingName($0) } ?? false) {
+            if !([frameName] + fallbackFrameNames).contains(where: { panel.setFrameUsingName($0) }) {
                 placeTopRight(panel)
             }
-            panel.setFrameAutosaveName(frameName)
+            if remembersFrame { panel.setFrameAutosaveName(frameName) }
         }
         return panel
     }

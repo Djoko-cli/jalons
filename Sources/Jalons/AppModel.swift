@@ -39,6 +39,13 @@ final class AppModel {
 
     func start() {
         followed = loadFollowed()
+        // Reprise des anciens réglages, une seule fois : la place d'avant (`JalonsFrise`) l'emporte sur une place
+        // laissée sous le nom propre à la spec par une mise au point, et la liste est aussitôt enregistrée.
+        if persists, defaults.data(forKey: Self.followedKey) == nil,
+           let legacy = defaults.string(forKey: Self.legacySpecPathKey) {
+            NSWindow.removeFrame(usingName: RoadmapTracker.frameName(for: legacy))
+            save()
+        }
         for path in followed.paths { trackers.append(makeTracker(path)) }
         for tracker in trackers {
             tracker.start()
@@ -69,12 +76,12 @@ final class AppModel {
     }
 
     /// Un suivi de plus, au premier rang de cascade libre pour que sa frise ne recouvre pas celle d'une autre.
-    private func makeTracker(_ path: String, fallbackFrameName: String? = nil) -> RoadmapTracker {
-        let legacy = defaults.string(forKey: Self.legacySpecPathKey) == path ? Self.legacyFrameName : nil
+    private func makeTracker(_ path: String, fallbackFrameNames: [String] = []) -> RoadmapTracker {
+        let legacy = defaults.string(forKey: Self.legacySpecPathKey) == path ? [Self.legacyFrameName] : []
         let used = Set(trackers.map(\.cascadeIndex))
         let index = (0...).first { !used.contains($0) } ?? trackers.count
-        return RoadmapTracker(path: path, model: self, options: options, fallbackFrameName: fallbackFrameName ?? legacy,
-                              cascadeIndex: index)
+        return RoadmapTracker(path: path, model: self, options: options, fallbackFrameNames: fallbackFrameNames + legacy,
+                              remembersFrame: persists, cascadeIndex: index)
     }
 
     /// Le chemin enregistré dans la liste suivie et affiché.
@@ -129,7 +136,7 @@ final class AppModel {
             if wasVisible { existing.showPanel() }
             return
         }
-        let replacement = makeTracker(path, fallbackFrameName: tracker.frameName)
+        let replacement = makeTracker(path, fallbackFrameNames: [tracker.frameName])
         trackers.insert(replacement, at: index)
         replacement.start()
         if wasVisible { replacement.showPanel() }
@@ -139,6 +146,7 @@ final class AppModel {
     func remove(_ tracker: RoadmapTracker) {
         followed.remove(tracker.path)
         save()
+        if persists { NSWindow.removeFrame(usingName: tracker.frameName) }
         tracker.stop()
         trackers.removeAll { $0 === tracker }
     }

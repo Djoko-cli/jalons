@@ -47,6 +47,8 @@ private final class Bench {
         #expect(bench.model.trackers.map(\.path) == [spec.path])
         #expect(bench.model.primary?.path == spec.path)
         #expect(bench.model.trackers.first?.isPanelVisible == false)
+        // Enregistrée aussitôt : la reprise ne se refait pas au lancement suivant.
+        #expect(bench.saved?.paths == [spec.path])
     }
 
     @Test func aSpecReachedThroughASymbolicLinkIsNotFollowedTwice() throws {

@@ -30,6 +30,9 @@ struct MenuContent: View {
             }
             Divider()
         }
+        if model.trackers.count == 1, let only = model.trackers.first {
+            Button(only.isPanelVisible ? "Masquer la frise" : "Afficher la frise") { only.togglePanel() }
+        }
         Button("Ajouter une feuille de route…") { model.addInteractively() }
         if model.trackers.count > 1 {
             if model.trackers.contains(where: { !$0.isPanelVisible }) {

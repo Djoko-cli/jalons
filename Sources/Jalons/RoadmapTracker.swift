@@ -32,15 +32,17 @@ final class RoadmapTracker: Identifiable {
 
     static func frameName(for path: String) -> String { "JalonsFrise \(path)" }
 
-    /// `fallbackFrameName` : une place retenue sous un autre nom, reprise si la spec n'a pas encore la sienne (celle
-    /// d'avant les frises multiples, ou celle de la spec remplacée).
-    init(path: String, model: AppModel, options: LaunchOptions, fallbackFrameName: String?, cascadeIndex: Int) {
+    /// `fallbackFrameNames` : des places retenues sous d'autres noms, reprises si la spec n'a pas encore la sienne
+    /// (celle d'avant les frises multiples, ou celle de la spec remplacée). `remembersFrame` : faux en mise au point.
+    init(path: String, model: AppModel, options: LaunchOptions, fallbackFrameNames: [String], remembersFrame: Bool,
+         cascadeIndex: Int) {
         self.path = path
         self.model = model
         self.options = options
         self.cascadeIndex = cascadeIndex
         panel = FloatingPanelController(tracker: self, frameName: Self.frameName(for: path),
-                                        fallbackFrameName: fallbackFrameName, cascadeIndex: cascadeIndex)
+                                        fallbackFrameNames: fallbackFrameNames, remembersFrame: remembersFrame,
+                                        cascadeIndex: cascadeIndex)
     }
 
     func start() {
