@@ -23,19 +23,23 @@ public enum PlanLocator {
         return Int(match.1)
     }
 
-    /// Les plans du dossier (fichiers ordinaires seulement), par phase, chaque liste triée par nom.
+    /// Les plans du dossier (fichiers ordinaires et liens symboliques), par phase, chaque liste triée par nom.
+    /// « Pas encore de dossier » seulement s'il n'y a rien du tout à cet endroit : un lien cassé ou un fichier à la place
+    /// du dossier est une lecture impossible, à signaler.
     public static func plans(in directory: URL, fileManager: FileManager = .default) -> Listing {
+        guard (try? fileManager.attributesOfItem(atPath: directory.path)) != nil else { return .missing }
         var isDirectory: ObjCBool = false
-        guard fileManager.fileExists(atPath: directory.path, isDirectory: &isDirectory), isDirectory.boolValue else {
-            return .missing
-        }
-        guard let urls = try? fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.isRegularFileKey],
+        guard fileManager.fileExists(atPath: directory.path, isDirectory: &isDirectory), isDirectory.boolValue,
+              let urls = try? fileManager.contentsOfDirectory(at: directory,
+                                                              includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey],
                                                               options: [.skipsHiddenFiles]) else { return .unreadable }
         var byPhase: [Int: [URL]] = [:]
         var unattached: [URL] = []
         for url in urls.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+            // Un lien vers un plan compte ; s'il est cassé, sa lecture échouera et sera signalée.
+            let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
             guard url.pathExtension.lowercased() == "md",
-                  (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
+                  values?.isRegularFile == true || values?.isSymbolicLink == true else { continue }
             if let number = phaseNumber(inFileName: url.lastPathComponent) {
                 byPhase[number, default: []].append(url)
             } else {

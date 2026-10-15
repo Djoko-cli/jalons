@@ -46,9 +46,12 @@ final class AppModel {
         }
     }
 
+    /// Relit la feuille de route, depuis le chemin réel de la spec : le chargeur et la surveillance dérivent ainsi le
+    /// dossier des plans du même chemin, même si un dossier intermédiaire est un lien symbolique.
     func reload() {
-        state = RoadmapLoader.load(specURL: specURL)
+        state = RoadmapLoader.load(specURL: specURL.map { URL(fileURLWithPath: canonicalPath($0)) })
         launchAtLogin = SMAppService.mainApp.status == .enabled
+        if launchAtLogin { launchAtLoginNote = nil }
     }
 
     /// Les événements arrivent par rafales : la première programme une relecture, les suivantes s'y joignent.
@@ -138,9 +141,10 @@ final class AppModel {
         } else {
             watchUnavailable = true
             fallbackReload = Task { @MainActor [weak self] in
-                while !Task.isCancelled {
-                    try? await Task.sleep(for: .seconds(60))
-                    self?.reload()
+                while true {
+                    do { try await Task.sleep(for: .seconds(60)) } catch { return }
+                    guard let self else { return }
+                    reload()
                 }
             }
         }

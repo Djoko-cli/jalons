@@ -78,4 +78,33 @@ import Testing
         #expect(Presentation.accessibilityLabel(.loaded(incomplete)).hasSuffix("lecture incomplète : l'avancement peut être faux"))
         #expect(Presentation.accessibilityLabel(.failed(.noSpecChosen)) == "Jalons : Aucune feuille de route choisie")
     }
+
+    @Test func anUnmeasurablePhaseShowsAQuestionMarkEverywhere() throws {
+        let unreadable = try loaded { $0.phases[1].unreadablePlans = [URL(fileURLWithPath: "/tmp/phase-2-x.md")] }
+        #expect(Presentation.phasePercent(unreadable.phases[1], in: unreadable) == "?")
+        #expect(Presentation.accessibilityLabel(.loaded(unreadable)).contains("Phase 2 : Inventaire, avancement inconnu"))
+
+        let noFolder = try loaded { $0.plansDirectoryUnreadable = true }
+        #expect(Presentation.phasePercent(noFolder.phases[0], in: noFolder) == "100\u{202F}%")
+        #expect(Presentation.phasePercent(noFolder.phases[1], in: noFolder) == "?")
+
+        let empty = try loaded(plans: ["phase-2-inventaire.md": "# Plan sans case\n\n### Task 1: A écrire\n"])
+        #expect(Presentation.phasePercent(empty.phases[1], in: empty) == "?")
+        #expect(subtitle(1, empty) == "Plan sans case (avertissement)")
+        #expect(Presentation.currentPhaseDetail(empty.phases[1], in: empty)
+                == "Plan sans case à cocher : avancement non mesurable")
+        #expect(Presentation.warnings(empty) == ["Plan sans case à cocher : phase-2-inventaire.md"])
+        #expect(empty.hasWarnings)
+
+        let measured = try loaded(plans: ["phase-2-inventaire.md": Samples.planPhase2])
+        #expect(Presentation.phasePercent(measured.phases[1], in: measured) == "60\u{202F}%")
+    }
+
+    @Test func aCommentNeverClosedIsAWarning() throws {
+        let roadmap = try loaded(spec: Samples.spec + "\n<!-- jamais refermé\n- [ ] Phase 4 : perdue\n")
+        #expect(roadmap.phases.map(\.number) == [1, 2, 3])
+        #expect(roadmap.hasWarnings)
+        #expect(Presentation.warnings(roadmap)
+                == ["Commentaire HTML jamais refermé dans la spec, ligne 12 : la suite n'a pas été lue"])
+    }
 }

@@ -11,7 +11,8 @@ enum MenuBarIcon {
             guard let phase = roadmap.currentPhase else {
                 return compose(progress: 1, text: "Terminé", warning: roadmap.hasWarnings, state: state)
             }
-            return compose(progress: roadmap.progress, text: "Phase \(phase.number) · \(Wording.percent(phase.progress))",
+            return compose(progress: roadmap.progress,
+                           text: "Phase \(phase.number) · \(Presentation.phasePercent(phase, in: roadmap))",
                            warning: roadmap.hasWarnings, state: state)
         case .failed(.noSpecChosen):
             return compose(progress: nil, text: "Jalons", warning: false, state: state)

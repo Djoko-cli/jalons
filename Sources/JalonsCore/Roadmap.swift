@@ -14,8 +14,10 @@ public struct RoadmapEntry: Sendable, Equatable {
 public struct ParsedRoadmap: Sendable, Equatable {
     public var title: String?
     public var entries: [RoadmapEntry]
-    /// Lignes des cases « Phase… » non retenues (« Phase 1.1 », numéro en double).
+    /// Lignes des cases « Phase… » non retenues (« Phase 1.1 », numéro en double, case dans l'en-tête YAML).
     public var ignoredLines: [Int] = []
+    /// Ligne d'ouverture d'un commentaire HTML jamais refermé : la suite de la spec n'a pas été lue.
+    public var unclosedCommentLine: Int?
 }
 
 /// Un plan lu sur le disque.
@@ -51,6 +53,8 @@ public struct Roadmap: Sendable, Equatable {
     public var unattachedPlans: [URL] = []
     /// Lignes des cases « Phase… » de la spec qui n'ont pas été retenues.
     public var ignoredBoxLines: [Int] = []
+    /// Ligne d'ouverture d'un commentaire HTML jamais refermé dans la spec.
+    public var unclosedCommentLine: Int?
     public var readAt: Date
 }
 

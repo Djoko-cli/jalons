@@ -66,4 +66,30 @@ import Testing
         defer { folder.remove() }
         #expect(PlanLocator.plans(in: folder.plansDirectory) == .missing)
     }
+
+    @Test func aBrokenLinkOrAFileInPlaceOfThePlansFolderIsUnreadable() throws {
+        let folder = try FixtureFolder()
+        defer { folder.remove() }
+        try FileManager.default.createSymbolicLink(atPath: folder.plansDirectory.path,
+                                                   withDestinationPath: folder.root.appendingPathComponent("absent").path)
+        #expect(PlanLocator.plans(in: folder.plansDirectory) == .unreadable)
+        try FileManager.default.removeItem(at: folder.plansDirectory)
+        try "pas un dossier".write(to: folder.plansDirectory, atomically: true, encoding: .utf8)
+        #expect(PlanLocator.plans(in: folder.plansDirectory) == .unreadable)
+    }
+
+    @Test func aLinkToAPlanCounts() throws {
+        let folder = try FixtureFolder()
+        defer { folder.remove() }
+        let elsewhere = folder.root.appendingPathComponent("ailleurs.md")
+        try "### Task 1: X\n- [x] Étape\n".write(to: elsewhere, atomically: true, encoding: .utf8)
+        try FileManager.default.createDirectory(at: folder.plansDirectory, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(atPath: folder.plansDirectory.appendingPathComponent("phase-2-lien.md").path,
+                                                   withDestinationPath: elsewhere.path)
+        guard case .found(let byPhase, _) = PlanLocator.plans(in: folder.plansDirectory) else {
+            Issue.record("dossier des plans non lu")
+            return
+        }
+        #expect(byPhase[2]?.map(\.lastPathComponent) == ["phase-2-lien.md"])
+    }
 }

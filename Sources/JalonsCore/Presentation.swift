@@ -8,6 +8,7 @@ public enum Presentation {
         if phase.isChecked { return ("Terminée", false) }
         if !phase.unreadablePlans.isEmpty { return ("Plan illisible", true) }
         if roadmap.plansDirectoryUnreadable { return ("Plans illisibles", true) }
+        if phase.hasPlan && phase.steps.total == 0 { return ("Plan sans case", true) }
         if phase.awaitsSignOff { return ("À valider", false) }
         if !phase.hasPlan { return ("Plan à écrire", false) }
         return (Wording.percent(phase.progress), false)
@@ -19,10 +20,17 @@ public enum Presentation {
             return list("Plan illisible", "Plans illisibles", phase.unreadablePlans.map(\.lastPathComponent))
         }
         if roadmap.plansDirectoryUnreadable { return "Dossier des plans illisible" }
+        if phase.hasPlan && phase.steps.total == 0 { return "Plan sans case à cocher : avancement non mesurable" }
         if phase.awaitsSignOff { return "Toutes les étapes sont cochées : phase à valider" }
         if let next = phase.nextTask { return "Prochaine tâche : \(taskLabel(next, in: phase))" }
         if !phase.hasPlan { return "Plan à écrire" }
         return nil
+    }
+
+    /// L'avancement d'une phase en texte, pour l'icône et le menu : « 37 % », ou « ? » quand il n'est pas mesurable
+    /// (plan ou dossier illisible, plan sans case). Jamais un 0 % trompeur.
+    public static func phasePercent(_ phase: Phase, in roadmap: Roadmap) -> String {
+        phase.isMeasurable(in: roadmap) ? Wording.percent(phase.progress) : "?"
     }
 
     /// « Tâche 2 : … », précédé du titre du plan quand la phase en a plusieurs (les numéros s'y répètent).
@@ -41,6 +49,13 @@ public enum Presentation {
             lines.append(list("Plan rattaché à aucune phase", "Plans rattachés à aucune phase",
                               roadmap.unattachedPlans.map(\.lastPathComponent)))
         }
+        let withoutSteps = roadmap.phases.filter { !$0.isChecked }.flatMap(\.plansWithoutSteps).map(\.lastPathComponent)
+        if !withoutSteps.isEmpty {
+            lines.append(list("Plan sans case à cocher", "Plans sans case à cocher", withoutSteps))
+        }
+        if let line = roadmap.unclosedCommentLine {
+            lines.append("Commentaire HTML jamais refermé dans la spec, ligne \(line) : la suite n'a pas été lue")
+        }
         if !roadmap.ignoredBoxLines.isEmpty {
             let numbers = roadmap.ignoredBoxLines.map(String.init)
             lines.append(numbers.count == 1 ? "Case « Phase » ignorée dans la spec, ligne \(numbers[0])"
@@ -55,7 +70,8 @@ public enum Presentation {
         case .loaded(let roadmap):
             let warning = roadmap.hasWarnings ? " ; lecture incomplète : l'avancement peut être faux" : ""
             guard let phase = roadmap.currentPhase else { return "Jalons : toutes les phases sont terminées" + warning }
-            return "Jalons : \(Wording.phaseLabel(phase)), \(Wording.percent(phase.progress)) ; "
+            let value = phase.isMeasurable(in: roadmap) ? Wording.percent(phase.progress) : "avancement inconnu"
+            return "Jalons : \(Wording.phaseLabel(phase)), \(value) ; "
                 + "avancement global \(Wording.percent(roadmap.progress))" + warning
         case .failed(let failure):
             return "Jalons : \(Wording.failure(failure))"

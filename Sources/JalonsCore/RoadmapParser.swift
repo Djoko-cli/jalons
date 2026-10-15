@@ -1,30 +1,42 @@
 import Foundation
 
 /// Lit la feuille de route d'une spec : son titre (le premier `# `) et ses cases « Phase N : titre ».
-/// Sont ignorés : l'en-tête YAML, les blocs de code (règles CommonMark, comme Orchestre) et les commentaires HTML.
-/// Une case qui commence par « Phase » sans être retenue (« Phase 1.1 », numéro en double) est notée, jamais perdue
-/// en silence.
+/// Sont ignorés : l'en-tête YAML refermé, les blocs de code (règles CommonMark, comme Orchestre) et les commentaires
+/// HTML. Rien n'est perdu en silence : une case « Phase N » non retenue (« Phase 1.1 », numéro en double, case dans
+/// l'en-tête YAML) est notée, et un commentaire jamais refermé est signalé avec sa ligne d'ouverture.
 public enum RoadmapParser {
     public static func parse(_ text: String) -> ParsedRoadmap {
+        let lines = text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
         var title: String?
         var entries: [RoadmapEntry] = []
         var ignored: [Int] = []
         var numbers = Set<Int>()
         var fences = FenceTracker()
-        var inComment = false
-        var inFrontMatter = false
-        for (index, raw) in text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline).enumerated() {
-            var line = raw.trimmingCharacters(in: .whitespaces)
-            if index == 0 && line == "---" {
-                inFrontMatter = true
+        /// Ligne (index) d'ouverture d'un commentaire HTML sur plusieurs lignes, tant qu'il n'est pas refermé.
+        var openComment: Int?
+        var start = 0
+        // L'en-tête YAML ne compte que s'il est refermé : un `---` de séparation en ligne 1 n'avale rien.
+        if lines.first == "---", let end = lines.indices.dropFirst().first(where: { lines[$0] == "---" || lines[$0] == "..." }) {
+            for index in 1..<end where isPhaseLike(lines[index]) { ignored.append(index + 1) }
+            start = end + 1
+        }
+        for index in lines.indices where index >= start {
+            var line = lines[index]
+            if openComment != nil {
+                guard let end = line.range(of: "-->") else { continue }
+                openComment = nil
+                line = String(line[end.upperBound...]).trimmingCharacters(in: .whitespaces)
+            } else if fences.isCode(line) {
                 continue
             }
-            if inFrontMatter {
-                if line == "---" || line == "..." { inFrontMatter = false }
+            line = removingCompleteComments(line)
+            // Un commentaire ne s'ouvre sur plusieurs lignes que s'il commence la ligne ; un `<!--` orphelin au milieu
+            // d'une ligne reste du texte.
+            if line.hasPrefix("<!--") {
+                openComment = index
                 continue
             }
-            if !inComment && fences.isCode(line) { continue }
-            line = removingComments(line, inComment: &inComment)
             if line.isEmpty { continue }
             if title == nil, line.hasPrefix("# ") {
                 title = clean(String(line.dropFirst(2)))
@@ -32,8 +44,8 @@ public enum RoadmapParser {
             }
             guard let (checked, rawLabel) = checkbox(line) else { continue }
             let label = clean(rawLabel)
-            guard label.contains(#/(?i)^phase\b/#) else { continue }
-            guard let match = label.wholeMatch(of: #/(?i)phase\s+(\d+)(?!\d|[.,]\d)\s*(?:[:.\-—–]\s*)?(.*)/#),
+            guard isPhaseLabel(label) else { continue }
+            guard let match = label.wholeMatch(of: #/(?i)\W*phase[\s_-]*(\d+)(?!\d|[.,]\d)\s*(?:[:.\-—–]\s*)?(.*)/#),
                   let number = Int(match.1),
                   numbers.insert(number).inserted else {
                 ignored.append(index + 1)
@@ -42,7 +54,8 @@ public enum RoadmapParser {
             entries.append(RoadmapEntry(number: number, title: String(match.2).trimmingCharacters(in: .whitespaces),
                                         isChecked: checked, line: index + 1))
         }
-        return ParsedRoadmap(title: title, entries: entries, ignoredLines: ignored)
+        return ParsedRoadmap(title: title, entries: entries, ignoredLines: ignored,
+                             unclosedCommentLine: openComment.map { $0 + 1 })
     }
 
     /// Une case de liste : `- [ ] texte`, `* [x] texte`, `1. [X] texte`.
@@ -51,36 +64,34 @@ public enum RoadmapParser {
         return (match.1 != " ", String(match.2))
     }
 
-    /// Retire les commentaires HTML de la ligne, y compris ceux qui s'étendent sur plusieurs lignes.
-    static func removingComments(_ line: String, inComment: inout Bool) -> String {
-        var rest = Substring(line)
-        var kept = ""
-        while !rest.isEmpty {
-            if inComment {
-                guard let end = rest.range(of: "-->") else { return kept.trimmingCharacters(in: .whitespaces) }
-                rest = rest[end.upperBound...]
-                inComment = false
-            } else {
-                guard let start = rest.range(of: "<!--") else {
-                    kept += rest
-                    break
-                }
-                kept += rest[..<start.lowerBound]
-                rest = rest[start.upperBound...]
-                inComment = true
-            }
-        }
-        return kept.trimmingCharacters(in: .whitespaces)
+    /// « Phase » suivi d'un numéro, après d'éventuels signes (emoji, puce) : « Phase de recette » n'en est pas une.
+    static func isPhaseLabel(_ label: String) -> Bool {
+        label.contains(#/(?i)^\W*phase[\s_-]*\d/#)
     }
 
-    /// Retire la mise en forme Markdown d'un libellé : liens (on garde leur texte), gras, souligné, code.
-    /// « **Phase 1 : socle** », « [Phase 1 : socle](plans/x.md) » → « Phase 1 : socle ».
+    static func isPhaseLike(_ line: String) -> Bool {
+        guard let (_, label) = checkbox(line) else { return false }
+        return isPhaseLabel(clean(label))
+    }
+
+    /// Retire les commentaires HTML complets de la ligne, `<!-->` et `<!--->` compris (CommonMark).
+    static func removingCompleteComments(_ line: String) -> String {
+        line.replacing(#/<!--(?:>|->|.*?-->)/#, with: "").trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Retire la mise en forme Markdown d'un libellé : liens (on garde leur texte), code, et marques d'emphase en bord
+    /// de mot (gras, italique, barré). « **Phase 1 : socle** », « [Phase 1 : socle](plans/x.md) », « ~~Phase 1~~ »
+    /// → « Phase 1 : socle », « Phase 1 ». Les `_` à l'intérieur d'un mot restent (« Phase_1 »).
     static func clean(_ text: String) -> String {
-        text.replacing(#/\[([^\]]*)\]\([^)]*\)/#) { String($0.1) }
-            .replacingOccurrences(of: "**", with: "")
-            .replacingOccurrences(of: "__", with: "")
+        let unlinked = text
+            .replacing(#/\[([^\]]*)\]\([^)]*\)/#) { String($0.1) }
+            .replacing(#/\[([^\]]*)\]\[[^\]]*\]/#) { String($0.1) }
             .replacingOccurrences(of: "`", with: "")
-            .trimmingCharacters(in: .whitespaces)
+        let emphasis = CharacterSet(charactersIn: "*_~")
+        return unlinked.split(separator: " ", omittingEmptySubsequences: true)
+            .map { $0.trimmingCharacters(in: emphasis) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
 }
 

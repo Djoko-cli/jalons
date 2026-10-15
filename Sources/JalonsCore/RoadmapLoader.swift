@@ -41,7 +41,8 @@ public enum RoadmapLoader {
         }
         return .loaded(Roadmap(title: parsed.title ?? specURL.deletingPathExtension().lastPathComponent,
                                specURL: specURL, phases: phases, plansDirectoryUnreadable: directoryUnreadable,
-                               unattachedPlans: unattached, ignoredBoxLines: parsed.ignoredLines, readAt: now))
+                               unattachedPlans: unattached, ignoredBoxLines: parsed.ignoredLines,
+                               unclosedCommentLine: parsed.unclosedCommentLine, readAt: now))
     }
 
     static func readText(_ url: URL) -> String? {

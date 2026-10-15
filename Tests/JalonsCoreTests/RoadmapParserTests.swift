@@ -105,4 +105,51 @@ import Testing
         #expect(parsed.title == "Titre")
         #expect(parsed.entries.map(\.isChecked) == [false, true])
     }
+
+    @Test func anOrphanCommentInsideALineSwallowsNothing() {
+        let parsed = RoadmapParser.parse("""
+        - [ ] Phase 1 : retirer les `<!--` orphelins
+        - [ ] Phase 2 : b
+        <!-->
+        <!--->
+        - [ ] Phase 3 : c
+        """)
+        #expect(parsed.entries.map(\.number) == [1, 2, 3])
+        #expect(parsed.entries.first?.title == "retirer les <!-- orphelins")
+        #expect(parsed.unclosedCommentLine == nil)
+    }
+
+    @Test func aCommentNeverClosedIsReportedWithItsOpeningLine() {
+        let parsed = RoadmapParser.parse("""
+        - [ ] Phase 1 : a
+        <!-- commentaire jamais refermé
+        - [ ] Phase 2 : b
+        """)
+        #expect(parsed.entries.map(\.number) == [1])
+        #expect(parsed.unclosedCommentLine == 2)
+    }
+
+    @Test func anUnclosedFrontMatterIsNotOneAndABoxInsideAClosedOneIsNoted() {
+        let separator = RoadmapParser.parse("---\n# Titre\n- [ ] Phase 1 : a\n")
+        #expect(separator.title == "Titre")
+        #expect(separator.entries.map(\.number) == [1])
+        let header = RoadmapParser.parse("---\n- [ ] Phase 9 : x\n---\n- [ ] Phase 1 : a\n")
+        #expect(header.entries.map(\.number) == [1])
+        #expect(header.ignoredLines == [2])
+    }
+
+    @Test func moreLabelFormsAreReadAndOrdinaryBoxesAreNotFlagged() {
+        let parsed = RoadmapParser.parse("""
+        - [ ] Phase1 : a
+        - [ ] Phase_2 : b
+        - [ ] *Phase 3* : c
+        - [ ] ~~Phase 4~~ : d
+        - [ ] [Phase 5][p] : e
+        - [ ] ✅ Phase 6 : f
+        - [x] Phase de recette validée
+        """)
+        #expect(parsed.entries.map(\.number) == [1, 2, 3, 4, 5, 6])
+        #expect(parsed.entries.map(\.title) == ["a", "b", "c", "d", "e", "f"])
+        #expect(parsed.ignoredLines.isEmpty)
+    }
 }

@@ -33,7 +33,7 @@ struct MenuContent: View {
              + Wording.phasesDone(roadmap.doneCount, of: roadmap.phases.count))
         Divider()
         if let phase = roadmap.currentPhase {
-            Text("\(Wording.phaseLabel(phase)) · \(Wording.percent(phase.progress))")
+            Text("\(Wording.phaseLabel(phase)) · \(Presentation.phasePercent(phase, in: roadmap))")
             if let detail = Presentation.currentPhaseDetail(phase, in: roadmap) {
                 Text(detail)
             }
