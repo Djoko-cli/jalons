@@ -27,7 +27,7 @@ struct MenuBarLabel: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        Image(nsImage: MenuBarIcon.image(for: model.state))
-            .accessibilityLabel(Presentation.accessibilityLabel(model.state))
+        Image(nsImage: MenuBarIcon.image(for: model.primaryState))
+            .accessibilityLabel(Presentation.accessibilityLabel(model.primaryState))
     }
 }

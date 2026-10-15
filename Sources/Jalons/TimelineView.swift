@@ -5,12 +5,12 @@ import SwiftUI
 /// La frise verticale : l'en-tête (titre et avancement global), une ligne par phase reliée aux autres par un rail,
 /// les tâches de la phase en cours dépliées (et les étapes de sa prochaine tâche), et l'heure de la dernière lecture.
 struct TimelineView: View {
-    @Environment(AppModel.self) private var model
+    @Environment(RoadmapTracker.self) private var tracker
 
     var body: some View {
         ZStack {
             TimelineBackground()
-            switch model.state {
+            switch tracker.state {
             case .loaded(let roadmap):
                 RoadmapTimeline(roadmap: roadmap)
                     .id(roadmap.specURL)
@@ -232,7 +232,7 @@ private struct Node: View {
 /// Les tâches d'une phase dépliée. Les étapes de la prochaine tâche sont dépliées d'office ; les autres se déplient à
 /// la main, par leur chevron.
 private struct TaskList: View {
-    @Environment(AppModel.self) private var model
+    @Environment(RoadmapTracker.self) private var tracker
     let phase: Phase
     let highlighted: PhaseTask?
     /// Les tâches dépliées ou repliées à la main, par `PhaseTask.key`.
@@ -252,7 +252,7 @@ private struct TaskList: View {
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Button {
-                        model.open(item.plan)
+                        tracker.open(item.plan)
                     } label: {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
                             TaskIcon(status: item.task.status)
@@ -311,7 +311,7 @@ private struct TaskList: View {
 /// Les étapes d'une tâche : cochées, la suivante mise en avant (dans la prochaine tâche seulement), puis celles à
 /// venir. Un clic ouvre le plan.
 private struct StepList: View {
-    @Environment(AppModel.self) private var model
+    @Environment(RoadmapTracker.self) private var tracker
     let item: PhaseTask
     let highlightsNext: Bool
 
@@ -321,7 +321,7 @@ private struct StepList: View {
             ForEach(item.task.steps, id: \.line) { step in
                 let isNext = step.line == next
                 Button {
-                    model.open(item.plan)
+                    tracker.open(item.plan)
                 } label: {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         StepIcon(isChecked: step.isChecked, isNext: isNext)
@@ -376,12 +376,12 @@ private struct TaskIcon: View {
 }
 
 private struct Footer: View {
-    @Environment(AppModel.self) private var model
+    @Environment(RoadmapTracker.self) private var tracker
     let roadmap: Roadmap
 
     var body: some View {
         let warnings = Presentation.warnings(roadmap)
-            + (model.watchUnavailable ? ["Surveillance des fichiers indisponible : relecture chaque minute"] : [])
+            + (tracker.watchUnavailable ? ["Surveillance des fichiers indisponible : relecture chaque minute"] : [])
         VStack(alignment: .leading, spacing: 4) {
             if !warnings.isEmpty {
                 // L'orange ne vaut que pour les avertissements : `.secondary` se calcule à partir du style hérité.
@@ -408,7 +408,7 @@ private struct Footer: View {
 }
 
 private struct FailureView: View {
-    @Environment(AppModel.self) private var model
+    @Environment(RoadmapTracker.self) private var tracker
     let failure: RoadmapFailure
 
     var body: some View {
@@ -418,7 +418,11 @@ private struct FailureView: View {
                 .foregroundStyle(failure == .noSpecChosen ? Color.secondary : Color.orange)
             Text(Wording.failure(failure))
                 .multilineTextAlignment(.center)
-            Button("Choisir une feuille de route…") { model.chooseInteractively() }
+            HStack {
+                // Différés : ces actions ferment la fenêtre qui porte ces boutons.
+                Button("Ne plus suivre") { Task { @MainActor in tracker.model?.remove(tracker) } }
+                Button("Choisir une autre spec…") { Task { @MainActor in tracker.model?.replaceInteractively(tracker) } }
+            }
         }
         .padding(24)
     }

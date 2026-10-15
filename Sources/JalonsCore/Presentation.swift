@@ -49,6 +49,19 @@ public enum Presentation {
         text.count > length ? String(text.prefix(length - 1)).trimmingCharacters(in: .whitespaces) + "…" : text
     }
 
+    /// Le titre d'une feuille de route dans la liste du menu : « Titre — Phase 2 · 37 % », « Titre — terminée », ou le nom
+    /// de la spec quand elle n'a pas pu être lue.
+    public static func roadmapMenuTitle(_ state: RoadmapState, specName: String) -> String {
+        switch state {
+        case .loaded(let roadmap):
+            guard let phase = roadmap.currentPhase else { return "\(roadmap.title) — terminée" }
+            return "\(roadmap.title) — Phase \(phase.number) · \(phasePercent(phase, in: roadmap))"
+        case .failed(.specUnreadable): return "\(specName) — illisible"
+        case .failed(.noPhases): return "\(specName) — aucune phase"
+        case .failed(.noSpecChosen): return specName
+        }
+    }
+
     /// L'avancement d'une phase en texte, pour l'icône et le menu : « 37 % », ou « ? » quand il n'est pas mesurable
     /// (plan ou dossier illisible, plan sans case). Jamais un 0 % trompeur.
     public static func phasePercent(_ phase: Phase, in roadmap: Roadmap) -> String {

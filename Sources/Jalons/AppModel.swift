@@ -4,97 +4,178 @@ import Observation
 import ServiceManagement
 import UniformTypeIdentifiers
 
-/// L'état de l'app : la feuille de route suivie, sa surveillance, la frise flottante et l'ouverture à la connexion.
+/// L'état de l'app : les feuilles de route suivies (chacune avec sa frise), la principale, et l'ouverture à la connexion.
 @MainActor @Observable
 final class AppModel {
-    private(set) var state: RoadmapState = .failed(.noSpecChosen)
-    private(set) var isPanelVisible = false
+    private(set) var trackers: [RoadmapTracker] = []
+    private(set) var followed = FollowedRoadmaps()
     private(set) var launchAtLogin = SMAppService.mainApp.status == .enabled
     private(set) var launchAtLoginNote: String?
-    /// La surveillance des fichiers n'a pas pu démarrer : relecture de secours chaque minute, et avertissement affiché.
-    private(set) var watchUnavailable = false
 
     let options: LaunchOptions
     @ObservationIgnored private let defaults: UserDefaults
-    @ObservationIgnored private var watcher: FileWatcher?
-    @ObservationIgnored private var reloadPending = false
-    @ObservationIgnored private var fallbackReload: Task<Void, Never>?
-    @ObservationIgnored private lazy var panel = FloatingPanelController(model: self)
 
-    static let specPathKey = "cheminFeuilleDeRoute"
-    static let panelVisibleKey = "friseVisible"
+    static let followedKey = "feuillesDeRoute"
+    /// Les réglages d'avant les frises multiples : repris une fois, puis laissés tels quels.
+    static let legacySpecPathKey = "cheminFeuilleDeRoute"
+    static let legacyPanelVisibleKey = "friseVisible"
+    static let legacyFrameName = "JalonsFrise"
 
     init(options: LaunchOptions) {
         self.options = options
         defaults = options.settingsSuite.flatMap { UserDefaults(suiteName: $0) } ?? .standard
     }
 
-    /// La spec suivie : celle de `-specPath` en mise au point, sinon celle choisie dans le menu.
-    var specURL: URL? {
-        if let path = options.specPath { return URL(fileURLWithPath: path) }
-        return defaults.string(forKey: Self.specPathKey).map { URL(fileURLWithPath: $0) }
-    }
+    /// `-specPath` suit cette seule spec, et une capture de mise au point ne doit rien changer : ni l'un ni l'autre
+    /// n'enregistre la liste suivie.
+    private var persists: Bool { options.specPath == nil && options.snapshotDirectory == nil }
 
-    var panelWindow: NSPanel? { panel.window }
+    /// La feuille de route de l'icône de la barre des menus.
+    var primary: RoadmapTracker? { trackers.first { $0.path == followed.primary } ?? trackers.first }
+
+    var primaryState: RoadmapState { primary?.state ?? .failed(.noSpecChosen) }
+
+    var anyPanelVisible: Bool { trackers.contains(where: \.isPanelVisible) }
 
     func start() {
-        reload()
-        startWatching()
-        if options.snapshotDirectory != nil || defaults.bool(forKey: Self.panelVisibleKey) { showPanel() }
+        followed = loadFollowed()
+        for path in followed.paths { trackers.append(makeTracker(path)) }
+        for tracker in trackers {
+            tracker.start()
+            if options.snapshotDirectory != nil || followed.visible.contains(tracker.path) { tracker.showPanel() }
+        }
         if let directory = options.snapshotDirectory {
             Task { await DebugCapture.run(model: self, directory: directory) }
         }
     }
 
-    /// Relit la feuille de route, depuis le chemin réel de la spec : le chargeur et la surveillance dérivent ainsi le
-    /// dossier des plans du même chemin, même si un dossier intermédiaire est un lien symbolique.
-    func reload() {
-        state = RoadmapLoader.load(specURL: specURL.map { URL(fileURLWithPath: canonicalPath($0)) })
+    /// La liste suivie : celle de `-specPath`, sinon celle enregistrée, sinon celle reprise des anciens réglages.
+    private func loadFollowed() -> FollowedRoadmaps {
+        if let path = options.specPath {
+            return FollowedRoadmaps(legacyPath: standardized(URL(fileURLWithPath: path)), legacyVisible: true)
+        }
+        if let data = defaults.data(forKey: Self.followedKey),
+           let decoded = try? JSONDecoder().decode(FollowedRoadmaps.self, from: data) {
+            return decoded
+        }
+        return FollowedRoadmaps(legacyPath: defaults.string(forKey: Self.legacySpecPathKey),
+                                legacyVisible: defaults.bool(forKey: Self.legacyPanelVisibleKey))
+    }
+
+    /// Enregistre la liste suivie (sauf en mise au point, voir `persists`).
+    private func save() {
+        guard persists, let data = try? JSONEncoder().encode(followed) else { return }
+        defaults.set(data, forKey: Self.followedKey)
+    }
+
+    /// Un suivi de plus, au premier rang de cascade libre pour que sa frise ne recouvre pas celle d'une autre.
+    private func makeTracker(_ path: String, fallbackFrameName: String? = nil) -> RoadmapTracker {
+        let legacy = defaults.string(forKey: Self.legacySpecPathKey) == path ? Self.legacyFrameName : nil
+        let used = Set(trackers.map(\.cascadeIndex))
+        let index = (0...).first { !used.contains($0) } ?? trackers.count
+        return RoadmapTracker(path: path, model: self, options: options, fallbackFrameName: fallbackFrameName ?? legacy,
+                              cascadeIndex: index)
+    }
+
+    /// Le chemin enregistré dans la liste suivie et affiché.
+    private func standardized(_ url: URL) -> String { url.standardizedFileURL.path }
+
+    /// Le suivi de cette spec, même atteinte par un autre chemin (lien symbolique, casse) : comparé sur le chemin réel.
+    private func tracker(following url: URL) -> RoadmapTracker? {
+        let real = canonicalPath(url)
+        return trackers.first { canonicalPath($0.specURL) == real }
+    }
+
+    /// Suit une spec de plus et affiche sa frise ; une spec déjà suivie montre simplement la sienne.
+    func add(_ url: URL) {
+        if let existing = tracker(following: url) {
+            existing.showPanel()
+            return
+        }
+        let path = standardized(url)
+        followed.add(path)
+        save()
+        let tracker = makeTracker(path)
+        trackers.append(tracker)
+        tracker.start()
+        tracker.showPanel()
+    }
+
+    func addInteractively() {
+        for url in pickSpecs(title: "Ajouter des feuilles de route", prompt: "Suivre", multiple: true) { add(url) }
+    }
+
+    /// Une spec illisible ou sans phase : en suivre une autre à sa place, avec la même frise.
+    func replaceInteractively(_ tracker: RoadmapTracker) {
+        guard let url = pickSpecs(title: "Remplacer la feuille de route", prompt: "Suivre", multiple: false).first else {
+            return
+        }
+        replace(tracker, with: url)
+    }
+
+    /// Suit `url` à la place de `tracker`, au même rang et à la même place. Si `url` est déjà suivie, l'ancienne est
+    /// simplement retirée, et la frise de l'autre montrée seulement si celle de l'ancienne l'était.
+    func replace(_ tracker: RoadmapTracker, with url: URL) {
+        guard let index = trackers.firstIndex(where: { $0 === tracker }) else { return }
+        let existing = self.tracker(following: url)
+        guard existing !== tracker else { return }
+        let path = existing?.path ?? standardized(url)
+        let wasVisible = tracker.isPanelVisible
+        followed.replace(tracker.path, with: path)
+        save()
+        tracker.stop()
+        trackers.remove(at: index)
+        if let existing {
+            if wasVisible { existing.showPanel() }
+            return
+        }
+        let replacement = makeTracker(path, fallbackFrameName: tracker.frameName)
+        trackers.insert(replacement, at: index)
+        replacement.start()
+        if wasVisible { replacement.showPanel() }
+    }
+
+    /// Ne suit plus cette feuille de route : sa surveillance s'arrête et sa frise se ferme.
+    func remove(_ tracker: RoadmapTracker) {
+        followed.remove(tracker.path)
+        save()
+        tracker.stop()
+        trackers.removeAll { $0 === tracker }
+    }
+
+    /// Celle que l'icône de la barre des menus montre.
+    func setPrimary(_ tracker: RoadmapTracker) {
+        followed.setPrimary(tracker.path)
+        save()
+    }
+
+    func showAllPanels() { trackers.forEach { $0.showPanel() } }
+
+    func hideAllPanels() { trackers.forEach { $0.hidePanel() } }
+
+    /// Appelée par une frise quand elle s'ouvre ou se ferme ; mémorisée pour la rouvrir au prochain lancement.
+    func panelVisibilityChanged(_ tracker: RoadmapTracker, _ visible: Bool) {
+        guard followed.paths.contains(tracker.path), followed.visible.contains(tracker.path) != visible else { return }
+        followed.setVisible(tracker.path, visible)
+        save()
+    }
+
+    /// Le sélecteur de fichiers, limité aux specs Markdown.
+    private func pickSpecs(title: String, prompt: String, multiple: Bool) -> [URL] {
+        let openPanel = NSOpenPanel()
+        openPanel.title = title
+        openPanel.message = "La spec dont la feuille de route liste les phases (« - [ ] Phase 1 : … »)."
+        openPanel.prompt = prompt
+        openPanel.allowedContentTypes = [UTType(filenameExtension: "md") ?? .plainText, .plainText]
+        openPanel.allowsMultipleSelection = multiple
+        NSApp.activate()
+        return openPanel.runModal() == .OK ? openPanel.urls : []
+    }
+
+    /// Se cale sur l'état réel de l'ouverture à la connexion, qui a pu changer dans Réglages Système.
+    func refreshLaunchAtLogin() {
         launchAtLogin = SMAppService.mainApp.status == .enabled
         if launchAtLogin { launchAtLoginNote = nil }
-    }
-
-    /// Les événements arrivent par rafales : la première programme une relecture, les suivantes s'y joignent.
-    func scheduleReload() {
-        guard !reloadPending else { return }
-        reloadPending = true
-        Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(300))
-            guard let self else { return }
-            reloadPending = false
-            reload()
-        }
-    }
-
-    func choose(_ url: URL) {
-        defaults.set(url.path, forKey: Self.specPathKey)
-        reload()
-        startWatching()
-    }
-
-    func chooseInteractively() {
-        let openPanel = NSOpenPanel()
-        openPanel.title = "Choisir une feuille de route"
-        openPanel.message = "La spec dont la feuille de route liste les phases (« - [ ] Phase 1 : … »)."
-        openPanel.prompt = "Suivre"
-        openPanel.allowedContentTypes = [UTType(filenameExtension: "md") ?? .plainText, .plainText]
-        openPanel.allowsMultipleSelection = false
-        NSApp.activate()
-        if openPanel.runModal() == .OK, let url = openPanel.url { choose(url) }
-    }
-
-    func togglePanel() {
-        isPanelVisible ? hidePanel() : showPanel()
-    }
-
-    func showPanel() { panel.show() }
-
-    func hidePanel() { panel.hide() }
-
-    /// Appelée par la frise quand elle s'ouvre ou se ferme ; mémorisée pour la rouvrir au prochain lancement.
-    func panelVisibilityChanged(_ visible: Bool) {
-        isPanelVisible = visible
-        if options.snapshotDirectory == nil { defaults.set(visible, forKey: Self.panelVisibleKey) }
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
@@ -112,41 +193,5 @@ final class AppModel {
             launchAtLoginNote = "Ouverture à la connexion impossible : \(error.localizedDescription)"
         }
         launchAtLogin = SMAppService.mainApp.status == .enabled
-    }
-
-    func open(_ url: URL) {
-        NSWorkspace.shared.open(url)
-    }
-
-    /// Surveille le dossier de la spec et celui des plans (y compris s'il n'existe pas encore : on surveille leur parent).
-    /// Les chemins comparés sont les chemins réels, tels que FSEvents les rapporte.
-    private func startWatching() {
-        watcher?.stop()
-        watcher = nil
-        fallbackReload?.cancel()
-        fallbackReload = nil
-        watchUnavailable = false
-        guard !options.noWatch, let spec = specURL else { return }
-        let specDirectory = canonicalPath(spec.deletingLastPathComponent())
-        let root = (specDirectory as NSString).deletingLastPathComponent
-        let plansDirectory = (root as NSString).appendingPathComponent("plans")
-        let watcher = FileWatcher(paths: [root], accepts: { path in
-            path == specDirectory || path.hasPrefix(specDirectory + "/")
-                || path == plansDirectory || path.hasPrefix(plansDirectory + "/")
-        }, handler: { [weak self] in
-            Task { @MainActor in self?.scheduleReload() }
-        })
-        if watcher.start() {
-            self.watcher = watcher
-        } else {
-            watchUnavailable = true
-            fallbackReload = Task { @MainActor [weak self] in
-                while true {
-                    do { try await Task.sleep(for: .seconds(60)) } catch { return }
-                    guard let self else { return }
-                    reload()
-                }
-            }
-        }
     }
 }

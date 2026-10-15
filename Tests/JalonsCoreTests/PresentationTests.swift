@@ -128,6 +128,19 @@ import OrchestreCore
                 == "relire la spec")
     }
 
+    @Test func eachRoadmapHasAShortMenuTitle() throws {
+        let roadmap = try loaded(plans: ["phase-2-inventaire.md": Samples.planPhase2])
+        #expect(Presentation.roadmapMenuTitle(.loaded(roadmap), specName: "x.md")
+                == "Projet d'essai : conception — Phase 2 · 60\u{202F}%")
+        var finished = roadmap
+        for index in finished.phases.indices { finished.phases[index].isChecked = true }
+        #expect(Presentation.roadmapMenuTitle(.loaded(finished), specName: "x.md")
+                == "Projet d'essai : conception — terminée")
+        let url = URL(fileURLWithPath: "/tmp/x.md")
+        #expect(Presentation.roadmapMenuTitle(.failed(.specUnreadable(url)), specName: "x.md") == "x.md — illisible")
+        #expect(Presentation.roadmapMenuTitle(.failed(.noPhases(url)), specName: "x.md") == "x.md — aucune phase")
+    }
+
     @Test func warningsAreWrittenInClear() throws {
         let roadmap = try loaded(spec: Samples.spec + "\n- [ ] Phase 2.1 : sous-étape\n",
                                  plans: ["2026-01-02-plan1-socle.md": "# Plan"]) { roadmap in

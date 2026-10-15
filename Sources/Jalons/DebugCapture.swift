@@ -12,16 +12,19 @@ enum DebugCapture {
         case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
         default: break
         }
-        model.showPanel()
+        model.showAllPanels()
         try? await Task.sleep(for: .seconds(1.5))
         try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
-        if let panel = model.panelWindow {
+        // La principale dans frise.png, les autres dans frise-2.png, frise-3.png… dans l'ordre de la liste.
+        let ordered = model.primary.map { primary in [primary] + model.trackers.filter { $0 !== primary } } ?? []
+        for (index, tracker) in ordered.enumerated() {
+            guard let panel = tracker.panelWindow else { continue }
             // Une fenêtre inactive perd la teinte de son verre : la rendre active avant de la photographier.
             panel.makeKeyAndOrderFront(nil)
             try? await Task.sleep(for: .milliseconds(800))
-            write(panel, to: "\(directory)/frise.png")
+            write(panel, to: index == 0 ? "\(directory)/frise.png" : "\(directory)/frise-\(index + 1).png")
         }
-        writeMenuBarIcon(MenuBarIcon.image(for: model.state), to: "\(directory)/barre-des-menus.png")
+        writeMenuBarIcon(MenuBarIcon.image(for: model.primaryState), to: "\(directory)/barre-des-menus.png")
         if model.options.quitAfterSnapshot {
             NSApplication.shared.terminate(nil)
             try? await Task.sleep(for: .seconds(2))

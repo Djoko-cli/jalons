@@ -8,6 +8,8 @@
 
 **Jalons shows where a project's roadmap stands, all the time:** a menu bar item with the current phase and its progress, and a floating timeline that checks itself off as the work gets done.
 
+It can **follow several roadmaps at once**, each with its own floating timeline that you place and show or hide on its own. The menu bar icon shows the main one; the menu lists them all, each with its commands (show the timeline, make it the main one, open the spec, stop following it).
+
 It **reads and never writes.** The roadmap comes from a design spec and its plans, in Markdown, and Jalons updates within half a second of any change on disk. If file watching cannot start, Jalons says so and re-reads every minute. The interface is in French.
 
 ### What it reads
@@ -51,7 +53,7 @@ scripts/build-app.sh
 open build/Jalons.app
 ```
 
-Then choose a spec in the menu: « Choisir une feuille de route… ».
+Then add one or more specs in the menu: « Ajouter une feuille de route… ». The first one added is the main one.
 
 The script compiles the app icon (`Ressources/AppIcon.icon`, an Icon Composer file) with `actool`, and stops if the icon is missing. Its only layer is drawn by a script: `swift scripts/dessiner-icone.swift Ressources/AppIcon.icon/Assets/jalon.png`.
 
@@ -63,8 +65,8 @@ swift test
 
 ### Debugging options
 
-- `-specPath <path>`: follows this spec without changing the chosen one.
-- `-snapshotDir <folder>`: writes `frise.png` (the timeline) and `barre-des-menus.png` (the menu bar icon), without screen recording permission.
+- `-specPath <path>`: follows only this spec, and shows its timeline, without changing the followed list.
+- `-snapshotDir <folder>`: writes `frise.png` (the main timeline, then `frise-2.png`, `frise-3.png`… for the others) and `barre-des-menus.png` (the menu bar icon), without screen recording permission.
 - `-quitAfterSnapshot`: quits once the images are written.
 - `-appearance light|dark`: forces the appearance of the snapshots (with `-snapshotDir`).
 - `-settingsSuite <name>`: reads and writes the settings in this `UserDefaults` suite.
@@ -80,6 +82,8 @@ swift test
 ## Français
 
 **Jalons montre en permanence où en est la feuille de route d'un projet :** une icône dans la barre des menus avec la phase en cours et son avancement, et une frise flottante qui se coche au fil du travail.
+
+Elle peut **suivre plusieurs feuilles de route à la fois**, chacune avec sa propre frise flottante, que tu places, affiches ou masques séparément. L'icône de la barre des menus montre la principale ; le menu les liste toutes, chacune avec ses commandes (afficher la frise, en faire la principale, ouvrir la spec, ne plus la suivre).
 
 Elle **lit et n'écrit jamais.** La feuille de route vient d'une spec de conception et de ses plans, en Markdown, et Jalons se met à jour dans la demi-seconde qui suit un changement sur le disque. Si la surveillance des fichiers ne peut pas démarrer, Jalons le dit et relit les fichiers chaque minute. L'interface est en français.
 
@@ -124,7 +128,7 @@ scripts/build-app.sh
 open build/Jalons.app
 ```
 
-Choisis ensuite une spec dans le menu : « Choisir une feuille de route… ».
+Ajoute ensuite une ou plusieurs specs dans le menu : « Ajouter une feuille de route… ». La première ajoutée est la principale.
 
 Le script compile l'icône de l'app (`Ressources/AppIcon.icon`, un fichier Icon Composer) avec `actool`, et s'arrête si elle manque. Son unique calque est dessiné par un script : `swift scripts/dessiner-icone.swift Ressources/AppIcon.icon/Assets/jalon.png`.
 
@@ -136,8 +140,8 @@ swift test
 
 ### Options de mise au point
 
-- `-specPath <chemin>` : suit cette spec sans changer celle qui est choisie.
-- `-snapshotDir <dossier>` : écrit `frise.png` (la frise) et `barre-des-menus.png` (l'icône de la barre des menus), sans autorisation d'enregistrement d'écran.
+- `-specPath <chemin>` : suit cette seule spec, et affiche sa frise, sans changer la liste suivie.
+- `-snapshotDir <dossier>` : écrit `frise.png` (la frise principale, puis `frise-2.png`, `frise-3.png`… pour les autres) et `barre-des-menus.png` (l'icône de la barre des menus), sans autorisation d'enregistrement d'écran.
 - `-quitAfterSnapshot` : quitte une fois les images écrites.
 - `-appearance light|dark` : force l'apparence des images (avec `-snapshotDir`).
 - `-settingsSuite <nom>` : lit et écrit les réglages dans cette suite de `UserDefaults`.

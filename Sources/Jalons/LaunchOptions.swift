@@ -2,7 +2,7 @@ import Foundation
 
 /// Arguments de lancement utiles à la mise au point ; sans argument, l'app se comporte normalement.
 struct LaunchOptions: Sendable {
-    /// `-specPath <chemin>` : suit cette spec sans toucher à celle choisie dans les réglages.
+    /// `-specPath <chemin>` : suit cette seule spec et affiche sa frise, sans toucher à la liste suivie.
     var specPath: String?
     /// `-settingsSuite <nom>` : lit et écrit les réglages dans cette suite de `UserDefaults`.
     var settingsSuite: String?
