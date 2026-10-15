@@ -28,6 +28,15 @@ public enum Wording {
         task.title.isEmpty ? "Tâche \(task.number)" : "Tâche \(task.number) : \(task.title)"
     }
 
+    /// Le texte d'une case sans ses marques Markdown de gras, de code et de lien : « **Étape 2 :** lancer `swift test` »
+    /// → « Étape 2 : lancer swift test » ; « [la spec](a.md) » → « la spec ».
+    public static func stepLabel(_ step: ParsedStep) -> String {
+        let text = step.text.replacing(#/\[([^\]]*)\]\([^)]*\)/#) { String($0.1) }
+            .replacingOccurrences(of: "**", with: "").replacingOccurrences(of: "`", with: "")
+            .trimmingCharacters(in: .whitespaces)
+        return text.isEmpty ? "Étape sans texte" : text
+    }
+
     /// « 1 phase terminée sur 7 », « 3 phases terminées sur 7 ».
     public static func phasesDone(_ done: Int, of total: Int) -> String {
         "\(done) \(done > 1 ? "phases terminées" : "phase terminée") sur \(total)"

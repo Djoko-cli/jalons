@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import JalonsCore
+import OrchestreCore
 
 @Suite struct PresentationTests {
     func loaded(spec: String = Samples.spec, plans: [String: String] = [:],
@@ -54,6 +55,64 @@ import Testing
                 == "Prochaine tâche : Tâche 2 : Corriger l'extracteur")
         let noPlan = try loaded()
         #expect(Presentation.currentPhaseDetail(noPlan.phases[1], in: noPlan) == "Plan à écrire")
+    }
+
+    @Test func theMenuNamesTheNextStepOfTheNextTask() throws {
+        let plan = "### Task 1: Préparer\n- [x] **Étape 1 : écrire le test**\n- [ ] **Étape 2 :** lancer `swift test`\n"
+        let roadmap = try loaded(plans: ["phase-2-inventaire.md": plan])
+        #expect(Presentation.currentStepDetail(roadmap.phases[1], in: roadmap) == "Étape 2 : lancer swift test")
+        let bare = try loaded(plans: ["phase-2-inventaire.md": "### Task 1: Préparer\n- [ ] relire le plan\n"])
+        #expect(Presentation.currentStepDetail(bare.phases[1], in: bare) == "Étape suivante : relire le plan")
+        let signOff = try loaded(plans: ["phase-2-inventaire.md": "### Task 1: Préparer\n- [x] Étape 1\n"])
+        #expect(Presentation.currentStepDetail(signOff.phases[1], in: signOff) == nil)
+        let unreadable = try loaded(plans: ["phase-2-inventaire.md": plan]) { roadmap in
+            roadmap.phases[1].unreadablePlans = [URL(fileURLWithPath: "/tmp/phase-2-autre.md")]
+        }
+        #expect(Presentation.currentStepDetail(unreadable.phases[1], in: unreadable) == nil)
+        let noPlan = try loaded()
+        #expect(Presentation.currentStepDetail(noPlan.phases[1], in: noPlan) == nil)
+        let long = try loaded(plans: ["phase-2-inventaire.md": "### Task 1: A\n- [ ] Étape 1 : " + String(repeating: "a", count: 200) + "\n"])
+        #expect(Presentation.currentStepDetail(long.phases[1], in: long)?.count == 90)
+    }
+
+    @Test func theNextStepBelongsToTheFirstUnfinishedTaskAcrossPlans() throws {
+        let plans = ["2026-01-01-phase-2-a.md": "# A\n### Task 1: Faite\n- [x] Étape 1\n### Task 2: Vide\nTexte.\n",
+                     "2026-01-02-phase-2-b.md": "# B\n### Task 1: Suivante\n- [x] Étape 1\n- [ ] Étape 2 : relire\n- [ ] Étape 3\n"
+                         + "### Task 2: Après\n- [ ] Étape 1\n"]
+        let roadmap = try loaded(plans: plans)
+        let phase = roadmap.phases[1]
+        #expect(Presentation.currentStepDetail(phase, in: roadmap) == "Étape 2 : relire")
+        let tasks = phase.tasks
+        #expect(tasks.map { Presentation.showsStepsByDefault($0, in: phase) } == [false, false, true, false])
+        let next = tasks[2], after = tasks[3]
+        #expect(next.task.steps.map { Presentation.isNextStep($0, of: next, in: phase) } == [false, true, false])
+        // La première case d'une autre tâche n'est jamais « l'étape suivante ».
+        #expect(!Presentation.isNextStep(after.task.steps[0], of: after, in: phase))
+    }
+
+    @Test func nextStepIsTheFirstUncheckedBox() {
+        let tasks = PlanParser.parse("### Task 1: Vide\n### Task 2: En cours\n- [x] a\n- [ ] b\n- [ ] c\n### Task 3: Faite\n- [x] a\n").tasks
+        #expect(tasks[0].nextStep == nil)
+        #expect(tasks[1].nextStep?.text == "b")
+        #expect(tasks[2].nextStep == nil)
+    }
+
+    @Test func onlyANumberedStepSkipsThePrefix() throws {
+        let text = "### Task 1: A\n- [ ] Étapes de test à relire\n"
+        let roadmap = try loaded(plans: ["phase-2-inventaire.md": text])
+        #expect(Presentation.currentStepDetail(roadmap.phases[1], in: roadmap) == "Étape suivante : Étapes de test à relire")
+        let empty = try loaded(plans: ["phase-2-inventaire.md": "### Task 1: A\n- [ ]\n"])
+        #expect(Presentation.currentStepDetail(empty.phases[1], in: empty) == "Étape suivante : Étape sans texte")
+        let step = try loaded(plans: ["phase-2-inventaire.md": "### Task 1: A\n- [ ] Step 4: run\n"])
+        #expect(Presentation.currentStepDetail(step.phases[1], in: step) == "Step 4: run")
+    }
+
+    @Test func stepLabelsDropMarkdownMarks() {
+        #expect(Wording.stepLabel(ParsedStep(text: "**Step 3: Run** `swift test`", isChecked: false, line: 1))
+                == "Step 3: Run swift test")
+        #expect(Wording.stepLabel(ParsedStep(text: "", isChecked: false, line: 1)) == "Étape sans texte")
+        #expect(Wording.stepLabel(ParsedStep(text: "relire [la spec](../specs/a.md)", isChecked: false, line: 1))
+                == "relire la spec")
     }
 
     @Test func warningsAreWrittenInClear() throws {

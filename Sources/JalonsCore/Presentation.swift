@@ -1,4 +1,5 @@
 import Foundation
+import OrchestreCore
 
 /// Les textes composés de l'interface (frise, menu, icône), en fonctions pures pour être testés. Règle : une lecture
 /// incomplète se dit toujours en clair, avant tout autre état ; elle ne passe jamais pour un « plan à écrire » ou un 0 %.
@@ -25,6 +26,30 @@ public enum Presentation {
         if let next = phase.nextTask { return "Prochaine tâche : \(taskLabel(next, in: phase))" }
         if !phase.hasPlan { return "Plan à écrire" }
         return nil
+    }
+
+    /// La ligne du menu sous la prochaine tâche : sa première case non cochée. Rien quand la ligne du dessus signale un
+    /// problème de lecture ou une phase à valider.
+    public static func currentStepDetail(_ phase: Phase, in roadmap: Roadmap) -> String? {
+        guard phase.isMeasurable(in: roadmap), let step = phase.nextTask?.task.nextStep else { return nil }
+        let label = Wording.stepLabel(step)
+        let named = label.firstMatch(of: #/^(?i)(étape|step)\s*\d/#) != nil
+        return truncated(named ? label : "Étape suivante : \(label)", to: 90)
+    }
+
+    /// Les étapes d'une tâche sont dépliées d'office dans la frise seulement pour la prochaine tâche de la phase.
+    public static func showsStepsByDefault(_ item: PhaseTask, in phase: Phase) -> Bool {
+        !item.task.steps.isEmpty && item.id == phase.nextTask?.id
+    }
+
+    /// L'étape mise en avant dans la frise : la première case non cochée de la prochaine tâche, et elle seule.
+    public static func isNextStep(_ step: ParsedStep, of item: PhaseTask, in phase: Phase) -> Bool {
+        item.id == phase.nextTask?.id && step.line == item.task.nextStep?.line
+    }
+
+    /// Coupe un texte trop long pour une ligne de menu, avec des points de suspension.
+    static func truncated(_ text: String, to length: Int) -> String {
+        text.count > length ? String(text.prefix(length - 1)).trimmingCharacters(in: .whitespaces) + "…" : text
     }
 
     /// L'avancement d'une phase en texte, pour l'icône et le menu : « 37 % », ou « ? » quand il n'est pas mesurable

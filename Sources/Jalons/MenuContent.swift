@@ -37,6 +37,9 @@ struct MenuContent: View {
             if let detail = Presentation.currentPhaseDetail(phase, in: roadmap) {
                 Text(detail)
             }
+            if let step = Presentation.currentStepDetail(phase, in: roadmap) {
+                Text(step)
+            }
         } else {
             Text("Toutes les phases sont terminées")
         }

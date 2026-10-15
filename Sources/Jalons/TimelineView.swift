@@ -3,7 +3,7 @@ import JalonsCore
 import SwiftUI
 
 /// La frise verticale : l'en-tête (titre et avancement global), une ligne par phase reliée aux autres par un rail,
-/// les tâches de la phase en cours dépliées, et l'heure de la dernière lecture.
+/// les tâches de la phase en cours dépliées (et les étapes de sa prochaine tâche), et l'heure de la dernière lecture.
 struct TimelineView: View {
     @Environment(AppModel.self) private var model
 
@@ -222,9 +222,13 @@ private struct Node: View {
     }
 }
 
+/// Les tâches d'une phase dépliée. Les étapes de la prochaine tâche sont dépliées d'office ; les autres se déplient à
+/// la main, par leur chevron.
 private struct TaskList: View {
     @Environment(AppModel.self) private var model
     let phase: Phase
+    /// Les tâches dépliées ou repliées à la main, par `PhaseTask.key`.
+    @State private var overrides: [String: Bool] = [:]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -235,26 +239,48 @@ private struct TaskList: View {
                         .foregroundStyle(.secondary)
                         .padding(.top, item.id == phase.tasks.first?.id ? 0 : 4)
                 }
-                Button {
-                    model.open(item.plan)
-                } label: {
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        TaskIcon(status: item.task.status)
-                        Text(Wording.taskLabel(item.task))
-                            .font(.callout)
-                            .lineLimit(2)
-                            .foregroundStyle(item.task.status == .done ? .secondary : .primary)
-                        Spacer(minLength: 6)
-                        if item.task.total > 0 {
-                            Text("\(item.task.checked)/\(item.task.total)")
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Button {
+                        model.open(item.plan)
+                    } label: {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            TaskIcon(status: item.task.status)
+                            Text(Wording.taskLabel(item.task))
+                                .font(.callout)
+                                .lineLimit(2)
+                                .foregroundStyle(item.task.status == .done ? .secondary : .primary)
+                            Spacer(minLength: 6)
+                            if item.task.total > 0 {
+                                Text("\(item.task.checked)/\(item.task.total)")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
                         }
+                        .contentShape(Rectangle())
                     }
-                    .contentShape(Rectangle())
+                    .buttonStyle(.plain)
+                    .help("Ouvrir le plan")
+                    if !item.task.steps.isEmpty {
+                        Button {
+                            overrides[item.key] = !isExpanded(item)
+                        } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                                .rotationEffect(.degrees(isExpanded(item) ? 90 : 0))
+                                .frame(minWidth: 24, minHeight: 20)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .help(isExpanded(item) ? "Masquer les étapes" : "Afficher les étapes")
+                        .accessibilityLabel("Étapes de \(Wording.taskLabel(item.task))")
+                        .accessibilityValue(isExpanded(item) ? "dépliées" : "repliées")
+                    }
                 }
-                .buttonStyle(.plain)
-                .help("Ouvrir le plan")
+                if isExpanded(item) {
+                    StepList(item: item, phase: phase)
+                        .padding(.leading, 22)
+                }
             }
             ForEach(phase.unreadablePlans, id: \.self) { url in
                 Label("Plan illisible : \(url.lastPathComponent)", systemImage: "exclamationmark.triangle.fill")
@@ -263,6 +289,62 @@ private struct TaskList: View {
             }
         }
         .padding(.top, 2)
+    }
+
+    private func isExpanded(_ item: PhaseTask) -> Bool {
+        guard !item.task.steps.isEmpty else { return false }
+        return overrides[item.key] ?? Presentation.showsStepsByDefault(item, in: phase)
+    }
+}
+
+/// Les étapes d'une tâche : cochées, la suivante mise en avant (dans la prochaine tâche seulement), puis celles à
+/// venir. Un clic ouvre le plan.
+private struct StepList: View {
+    @Environment(AppModel.self) private var model
+    let item: PhaseTask
+    let phase: Phase
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            ForEach(item.task.steps, id: \.line) { step in
+                let isNext = Presentation.isNextStep(step, of: item, in: phase)
+                Button {
+                    model.open(item.plan)
+                } label: {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        StepIcon(isChecked: step.isChecked, isNext: isNext)
+                        Text(Wording.stepLabel(step))
+                            .font(isNext ? .caption.weight(.semibold) : .caption)
+                            .lineLimit(2)
+                            .foregroundStyle(isNext ? .primary : .secondary)
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Ouvrir le plan")
+            }
+        }
+    }
+}
+
+private struct StepIcon: View {
+    let isChecked: Bool
+    let isNext: Bool
+
+    var body: some View {
+        Group {
+            if isChecked {
+                Image(systemName: "checkmark").foregroundStyle(.green).accessibilityLabel("faite")
+            } else if isNext {
+                Image(systemName: "arrowtriangle.right.fill").foregroundStyle(Color.accentColor)
+                    .accessibilityLabel("étape suivante")
+            } else {
+                Image(systemName: "circle").foregroundStyle(.secondary).accessibilityLabel("à faire")
+            }
+        }
+        .font(.caption2.weight(.semibold))
+        .frame(width: 12)
     }
 }
 

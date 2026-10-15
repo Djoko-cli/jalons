@@ -15,6 +15,9 @@ extension ParsedTask {
         if total > 0 && checked == total { return .done }
         return checked > 0 ? .inProgress : .todo
     }
+
+    /// La première case non cochée de la tâche.
+    public var nextStep: ParsedStep? { steps.first { !$0.isChecked } }
 }
 
 /// Une tâche d'une phase, avec le plan qui la contient (pour l'ouvrir) et son titre (quand la phase a plusieurs plans).
@@ -24,6 +27,8 @@ public struct PhaseTask: Sendable, Equatable, Identifiable {
     public var task: ParsedTask
 
     public var id: String { "\(plan.path)#\(task.line)" }
+    /// La même tâche d'une lecture à l'autre, même quand des lignes s'insèrent au-dessus d'elle dans le plan.
+    public var key: String { "\(plan.path)#tâche-\(task.number)" }
 }
 
 extension Phase {
