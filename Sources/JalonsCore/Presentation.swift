@@ -29,22 +29,19 @@ public enum Presentation {
     }
 
     /// La ligne du menu sous la prochaine tâche : sa première case non cochée. Rien quand la ligne du dessus signale un
-    /// problème de lecture ou une phase à valider.
+    /// problème de lecture.
     public static func currentStepDetail(_ phase: Phase, in roadmap: Roadmap) -> String? {
-        guard phase.isMeasurable(in: roadmap), let step = phase.nextTask?.task.nextStep else { return nil }
+        guard let step = highlightedTask(phase, in: roadmap)?.task.nextStep else { return nil }
         let label = Wording.stepLabel(step)
         let named = label.firstMatch(of: #/^(?i)(étape|step)\s*\d/#) != nil
         return truncated(named ? label : "Étape suivante : \(label)", to: 90)
     }
 
-    /// Les étapes d'une tâche sont dépliées d'office dans la frise seulement pour la prochaine tâche de la phase.
-    public static func showsStepsByDefault(_ item: PhaseTask, in phase: Phase) -> Bool {
-        !item.task.steps.isEmpty && item.id == phase.nextTask?.id
-    }
-
-    /// L'étape mise en avant dans la frise : la première case non cochée de la prochaine tâche, et elle seule.
-    public static func isNextStep(_ step: ParsedStep, of item: PhaseTask, in phase: Phase) -> Bool {
-        item.id == phase.nextTask?.id && step.line == item.task.nextStep?.line
+    /// La tâche dont la frise déplie d'office les étapes et met en avant la suivante, comme le menu : la prochaine tâche
+    /// d'une phase non cochée et mesurable. Aucune pour une phase terminée ou un plan illisible.
+    public static func highlightedTask(_ phase: Phase, in roadmap: Roadmap) -> PhaseTask? {
+        guard !phase.isChecked, phase.isMeasurable(in: roadmap) else { return nil }
+        return phase.nextTask
     }
 
     /// Coupe un texte trop long pour une ligne de menu, avec des points de suspension.

@@ -25,10 +25,12 @@ public struct PhaseTask: Sendable, Equatable, Identifiable {
     public var plan: URL
     public var planTitle: String
     public var task: ParsedTask
+    /// Rang de ce numéro de tâche dans le plan : 0, ou 1 pour une deuxième « Tâche 3 », etc.
+    public var occurrence = 0
 
     public var id: String { "\(plan.path)#\(task.line)" }
     /// La même tâche d'une lecture à l'autre, même quand des lignes s'insèrent au-dessus d'elle dans le plan.
-    public var key: String { "\(plan.path)#tâche-\(task.number)" }
+    public var key: String { "\(plan.path)#tâche-\(task.number)-\(occurrence)" }
 }
 
 extension Phase {
@@ -58,8 +60,12 @@ extension Phase {
 
     public var tasks: [PhaseTask] {
         plans.flatMap { plan in
-            plan.tasks.map { PhaseTask(plan: plan.url, planTitle: plan.title ?? plan.url.deletingPathExtension().lastPathComponent,
-                                       task: $0) }
+            var seen: [Int: Int] = [:]
+            return plan.tasks.map { task in
+                defer { seen[task.number, default: 0] += 1 }
+                return PhaseTask(plan: plan.url, planTitle: plan.title ?? plan.url.deletingPathExtension().lastPathComponent,
+                                 task: task, occurrence: seen[task.number] ?? 0)
+            }
         }
     }
 

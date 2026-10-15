@@ -82,12 +82,25 @@ import OrchestreCore
         let roadmap = try loaded(plans: plans)
         let phase = roadmap.phases[1]
         #expect(Presentation.currentStepDetail(phase, in: roadmap) == "Étape 2 : relire")
-        let tasks = phase.tasks
-        #expect(tasks.map { Presentation.showsStepsByDefault($0, in: phase) } == [false, false, true, false])
-        let next = tasks[2], after = tasks[3]
-        #expect(next.task.steps.map { Presentation.isNextStep($0, of: next, in: phase) } == [false, true, false])
-        // La première case d'une autre tâche n'est jamais « l'étape suivante ».
-        #expect(!Presentation.isNextStep(after.task.steps[0], of: after, in: phase))
+        #expect(Presentation.highlightedTask(phase, in: roadmap)?.id == phase.tasks[2].id)
+    }
+
+    @Test func nothingIsHighlightedInAFinishedPhaseOrBehindAnUnreadablePlan() throws {
+        let plan = "### Task 1: A\n- [ ] Étape 1\n"
+        let finished = try loaded(plans: ["phase-1-socle.md": plan])
+        #expect(Presentation.highlightedTask(finished.phases[0], in: finished) == nil)
+        let unreadable = try loaded(plans: ["phase-2-inventaire.md": plan]) { roadmap in
+            roadmap.phases[1].unreadablePlans = [URL(fileURLWithPath: "/tmp/phase-2-autre.md")]
+        }
+        #expect(Presentation.highlightedTask(unreadable.phases[1], in: unreadable) == nil)
+        #expect(Presentation.currentStepDetail(unreadable.phases[1], in: unreadable) == nil)
+    }
+
+    @Test func aRepeatedTaskNumberKeepsDistinctKeys() throws {
+        let plan = "### Task 1: A\n- [ ] a\n### Task 1: B\n- [ ] b\n### Task 2: C\n- [ ] c\n"
+        let roadmap = try loaded(plans: ["phase-2-inventaire.md": plan])
+        let keys = roadmap.phases[1].tasks.map(\.key)
+        #expect(Set(keys).count == 3)
     }
 
     @Test func nextStepIsTheFirstUncheckedBox() {

@@ -38,13 +38,7 @@ private struct RoadmapTimeline: View {
                 GlassGroup {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(Array(roadmap.phases.enumerated()), id: \.element.id) { index, phase in
-                            PhaseRow(phase: phase, status: roadmap.status(of: phase),
-                                     subtitle: Presentation.phaseSubtitle(phase, in: roadmap),
-                                     isFirst: index == 0, isLast: index == roadmap.phases.count - 1,
-                                     upperDone: index > 0 && roadmap.phases[index - 1].isChecked,
-                                     isExpanded: isExpanded(phase)) {
-                                overrides[phase.number] = !isExpanded(phase)
-                            }
+                            row(phase, at: index)
                         }
                     }
                     .padding(.horizontal, 12)
@@ -55,6 +49,17 @@ private struct RoadmapTimeline: View {
             Footer(roadmap: roadmap)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
+        }
+    }
+
+    private func row(_ phase: Phase, at index: Int) -> PhaseRow {
+        PhaseRow(phase: phase, status: roadmap.status(of: phase),
+                 subtitle: Presentation.phaseSubtitle(phase, in: roadmap),
+                 isFirst: index == 0, isLast: index == roadmap.phases.count - 1,
+                 upperDone: index > 0 && roadmap.phases[index - 1].isChecked,
+                 highlighted: Presentation.highlightedTask(phase, in: roadmap),
+                 isExpanded: isExpanded(phase)) {
+            overrides[phase.number] = !isExpanded(phase)
         }
     }
 
@@ -114,6 +119,8 @@ private struct PhaseRow: View {
     let isFirst: Bool
     let isLast: Bool
     let upperDone: Bool
+    /// La tâche mise en avant (voir `Presentation.highlightedTask`).
+    let highlighted: PhaseTask?
     let isExpanded: Bool
     let toggle: () -> Void
 
@@ -149,7 +156,7 @@ private struct PhaseRow: View {
                 }
                 .buttonStyle(.plain)
                 if isExpanded {
-                    TaskList(phase: phase)
+                    TaskList(phase: phase, highlighted: highlighted)
                 }
             }
             .padding(.vertical, 8)
@@ -227,17 +234,21 @@ private struct Node: View {
 private struct TaskList: View {
     @Environment(AppModel.self) private var model
     let phase: Phase
+    let highlighted: PhaseTask?
     /// Les tâches dépliées ou repliées à la main, par `PhaseTask.key`.
     @State private var overrides: [String: Bool] = [:]
 
     var body: some View {
+        let tasks = phase.tasks
+        // La première tâche de chaque plan, sous le titre du plan quand la phase en a plusieurs.
+        let planStarts = Set(Dictionary(grouping: tasks, by: \.plan).values.compactMap { $0.first?.id })
         VStack(alignment: .leading, spacing: 5) {
-            ForEach(phase.tasks) { item in
-                if phase.plans.count > 1, item.id == phase.tasks.first(where: { $0.plan == item.plan })?.id {
+            ForEach(tasks) { item in
+                if phase.plans.count > 1, planStarts.contains(item.id) {
                     Text(item.planTitle)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
-                        .padding(.top, item.id == phase.tasks.first?.id ? 0 : 4)
+                        .padding(.top, item.id == tasks.first?.id ? 0 : 4)
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Button {
@@ -278,7 +289,7 @@ private struct TaskList: View {
                     }
                 }
                 if isExpanded(item) {
-                    StepList(item: item, phase: phase)
+                    StepList(item: item, highlightsNext: item.id == highlighted?.id)
                         .padding(.leading, 22)
                 }
             }
@@ -293,7 +304,7 @@ private struct TaskList: View {
 
     private func isExpanded(_ item: PhaseTask) -> Bool {
         guard !item.task.steps.isEmpty else { return false }
-        return overrides[item.key] ?? Presentation.showsStepsByDefault(item, in: phase)
+        return overrides[item.key] ?? (item.id == highlighted?.id)
     }
 }
 
@@ -302,12 +313,13 @@ private struct TaskList: View {
 private struct StepList: View {
     @Environment(AppModel.self) private var model
     let item: PhaseTask
-    let phase: Phase
+    let highlightsNext: Bool
 
     var body: some View {
+        let next = highlightsNext ? item.task.nextStep?.line : nil
         VStack(alignment: .leading, spacing: 3) {
             ForEach(item.task.steps, id: \.line) { step in
-                let isNext = Presentation.isNextStep(step, of: item, in: phase)
+                let isNext = step.line == next
                 Button {
                     model.open(item.plan)
                 } label: {
