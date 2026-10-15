@@ -4,13 +4,18 @@ import PackageDescription
 let package = Package(
     name: "Jalons",
     platforms: [.macOS(.v15)],
+    products: [
+        .executable(name: "Jalons", targets: ["Jalons"]),
+    ],
     dependencies: [
         // Le lecteur de plans d'Orchestre, depuis le dépôt voisin.
         .package(path: "../orchestre"),
     ],
     targets: [
         .target(name: "JalonsCore", dependencies: [.product(name: "OrchestreCore", package: "orchestre")]),
+        .executableTarget(name: "Jalons", dependencies: ["JalonsCore"]),
         .testTarget(name: "JalonsCoreTests",
                     dependencies: ["JalonsCore", .product(name: "OrchestreCore", package: "orchestre")]),
+        .testTarget(name: "JalonsAppTests", dependencies: ["Jalons"]),
     ]
 )
