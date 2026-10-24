@@ -34,7 +34,8 @@ public enum RoadmapLoader {
                 }
                 let plan = PlanParser.parse(planText)
                 plans.append(PlanFile(url: url, title: plan.title, tasks: plan.tasks,
-                                      looseChecked: plan.looseChecked, looseTotal: plan.looseTotal))
+                                      looseChecked: plan.looseChecked, looseTotal: plan.looseTotal,
+                                      looseDeferred: plan.looseDeferred))
             }
             return Phase(number: entry.number, title: entry.title, isChecked: entry.isChecked,
                          plans: plans, unreadablePlans: unreadable)

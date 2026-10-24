@@ -28,6 +28,8 @@ public struct PlanFile: Sendable, Equatable {
     /// Cases hors de toute tâche.
     public var looseChecked: Int
     public var looseTotal: Int
+    /// Cases reportées hors de toute tâche.
+    public var looseDeferred = 0
 }
 
 /// Une phase : sa case dans la feuille de route et les plans qui la détaillent.

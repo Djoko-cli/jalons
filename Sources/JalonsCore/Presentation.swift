@@ -9,7 +9,7 @@ public enum Presentation {
         if phase.isChecked { return ("Terminée", false) }
         if !phase.unreadablePlans.isEmpty { return ("Plan illisible", true) }
         if roadmap.plansDirectoryUnreadable { return ("Plans illisibles", true) }
-        if phase.hasPlan && phase.steps.total == 0 { return ("Plan sans case", true) }
+        if phase.hasPlanWithoutAnyBox { return ("Plan sans case", true) }
         if phase.awaitsSignOff { return ("À valider", false) }
         if !phase.hasPlan { return ("Plan à écrire", false) }
         return (Wording.percent(phase.progress), false)
@@ -21,8 +21,11 @@ public enum Presentation {
             return list("Plan illisible", "Plans illisibles", phase.unreadablePlans.map(\.lastPathComponent))
         }
         if roadmap.plansDirectoryUnreadable { return "Dossier des plans illisible" }
-        if phase.hasPlan && phase.steps.total == 0 { return "Plan sans case à cocher : avancement non mesurable" }
-        if phase.awaitsSignOff { return "Toutes les étapes sont cochées : phase à valider" }
+        if phase.hasPlanWithoutAnyBox { return "Plan sans case à cocher : avancement non mesurable" }
+        if phase.awaitsSignOff {
+            return phase.deferredSteps > 0 ? "Toutes les étapes sont cochées ou reportées : phase à valider"
+                : "Toutes les étapes sont cochées : phase à valider"
+        }
         if let next = phase.nextTask { return "Prochaine tâche : \(taskLabel(next, in: phase))" }
         if !phase.hasPlan { return "Plan à écrire" }
         return nil

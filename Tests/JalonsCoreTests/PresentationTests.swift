@@ -141,6 +141,40 @@ import OrchestreCore
         #expect(Presentation.roadmapMenuTitle(.failed(.noPhases(url)), specName: "x.md") == "x.md — aucune phase")
     }
 
+    @Test func onlyDeferredStepsLeftReadsAsAPhaseToSignOffEverywhere() throws {
+        let plan = "### Task 1: A\n- [-] a\n- [x] b\n### Task 2: B\n- [-] a\n"
+        let roadmap = try loaded(plans: ["phase-2-inventaire.md": plan])
+        let phase = roadmap.phases[1]
+        #expect(subtitle(1, roadmap) == "À valider")
+        #expect(Presentation.currentPhaseDetail(phase, in: roadmap)
+                == "Toutes les étapes sont cochées ou reportées : phase à valider")
+        #expect(Presentation.currentStepDetail(phase, in: roadmap) == nil)
+        #expect(Presentation.highlightedTask(phase, in: roadmap) == nil)
+        #expect(Presentation.phasePercent(phase, in: roadmap) == "100\u{202F}%")
+        #expect(!roadmap.hasWarnings && Presentation.warnings(roadmap).isEmpty)
+        // Un plan fait seulement de cases reportées isolées n'est pas « sans case ».
+        let loose = try loaded(plans: ["phase-2-inventaire.md": "# Plan\n- [-] a\n"])
+        #expect(!loose.hasWarnings && subtitle(1, loose) == "À valider")
+    }
+
+    @Test func aDeferredFirstStepIsSkipped() throws {
+        let plan = "### Task 1: A\n- [-] **Step 1 :** filmer\n- [ ] **Step 2 :** relire\n"
+        let roadmap = try loaded(plans: ["phase-2-inventaire.md": plan])
+        let phase = roadmap.phases[1]
+        #expect(Presentation.currentStepDetail(phase, in: roadmap) == "Step 2 : relire")
+        #expect(phase.progress == 0 && subtitle(1, roadmap) == "0\u{202F}%")
+        #expect(phase.tasks[0].task.status == .todo)
+    }
+
+    @Test func theTaskCounterMentionsDeferredBoxes() {
+        let tasks = PlanParser.parse("### Task 1: A\n- [x] a\n- [-] b\n### Task 2: B\n- [-] a\n- [-] b\n- [ ] c\n### Task 3: C\n- [x] a\n").tasks
+        #expect(Wording.taskCount(tasks[0]) == "1/1 · 1 reportée")
+        #expect(Wording.taskCount(tasks[1]) == "0/1 · 2 reportées")
+        #expect(Wording.taskCount(tasks[2]) == "1/1")
+        let onlyDeferred = PlanParser.parse("### Task 1: A\n- [-] a\n- [-] b\n").tasks[0]
+        #expect(Wording.taskCount(onlyDeferred) == "2 reportées")
+    }
+
     @Test func warningsAreWrittenInClear() throws {
         let roadmap = try loaded(spec: Samples.spec + "\n- [ ] Phase 2.1 : sous-étape\n",
                                  plans: ["2026-01-02-plan1-socle.md": "# Plan"]) { roadmap in

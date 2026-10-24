@@ -37,6 +37,15 @@ public enum Wording {
         return text.isEmpty ? "Étape sans texte" : text
     }
 
+    /// Le compteur d'une tâche : « 3/5 », « 3/5 · 1 reportée » quand des cases sont reportées, « 2 reportées » quand il
+    /// n'y a que des cases reportées.
+    public static func taskCount(_ task: ParsedTask) -> String {
+        let count = "\(task.checked)/\(task.total)"
+        guard task.deferred > 0 else { return count }
+        let deferred = "\(task.deferred) " + (task.deferred > 1 ? "reportées" : "reportée")
+        return task.total > 0 ? "\(count) · \(deferred)" : deferred
+    }
+
     /// « 1 phase terminée sur 7 », « 3 phases terminées sur 7 ».
     public static func phasesDone(_ done: Int, of total: Int) -> String {
         "\(done) \(done > 1 ? "phases terminées" : "phase terminée") sur \(total)"

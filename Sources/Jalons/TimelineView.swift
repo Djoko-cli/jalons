@@ -255,14 +255,14 @@ private struct TaskList: View {
                         tracker.open(item.plan)
                     } label: {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            TaskIcon(status: item.task.status)
+                            TaskIcon(status: item.task.status, isAllDeferred: item.task.total == 0 && item.task.deferred > 0)
                             Text(Wording.taskLabel(item.task))
                                 .font(.callout)
                                 .lineLimit(2)
                                 .foregroundStyle(item.task.status == .done ? .secondary : .primary)
                             Spacer(minLength: 6)
-                            if item.task.total > 0 {
-                                Text("\(item.task.checked)/\(item.task.total)")
+                            if item.task.total + item.task.deferred > 0 {
+                                Text(Wording.taskCount(item.task))
                                     .font(.caption.monospacedDigit())
                                     .foregroundStyle(.secondary)
                             }
@@ -324,7 +324,7 @@ private struct StepList: View {
                     tracker.open(item.plan)
                 } label: {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        StepIcon(isChecked: step.isChecked, isNext: isNext)
+                        StepIcon(isChecked: step.isChecked, isDeferred: step.isDeferred, isNext: isNext)
                         Text(Wording.stepLabel(step))
                             .font(isNext ? .caption.weight(.semibold) : .caption)
                             .lineLimit(2)
@@ -342,12 +342,15 @@ private struct StepList: View {
 
 private struct StepIcon: View {
     let isChecked: Bool
+    let isDeferred: Bool
     let isNext: Bool
 
     var body: some View {
         Group {
             if isChecked {
                 Image(systemName: "checkmark").foregroundStyle(.green).accessibilityLabel("faite")
+            } else if isDeferred {
+                Image(systemName: "arrow.turn.down.right").foregroundStyle(.secondary).accessibilityLabel("reportée")
             } else if isNext {
                 Image(systemName: "arrowtriangle.right.fill").foregroundStyle(Color.accentColor)
                     .accessibilityLabel("étape suivante")
@@ -362,9 +365,13 @@ private struct StepIcon: View {
 
 private struct TaskIcon: View {
     let status: TaskStatus
+    /// Toutes ses cases sont reportées : rien n'a été fait, la tâche est seulement sortie du travail.
+    var isAllDeferred = false
 
     var body: some View {
         switch status {
+        case .done where isAllDeferred:
+            Image(systemName: "arrow.turn.down.right.circle").foregroundStyle(.secondary).accessibilityLabel("reportée")
         case .done:
             Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).accessibilityLabel("faite")
         case .inProgress:

@@ -24,6 +24,43 @@ import Testing
         #expect(!roadmap.phases[2].hasPlan)
     }
 
+    @Test func deferredBoxesAreNeitherDoneNorLeft() throws {
+        let plan = """
+        ### Task 1: Faite, avec une case reportée
+        - [x] a
+        - [-] b **Reportée en phase 7**
+        ### Task 2: En cours
+        - [x] a
+        - [-] b
+        - [ ] c
+        - [ ] d
+        """
+        let roadmap = try loaded(spec: Samples.spec, plans: ["phase-2-inventaire.md": plan])
+        let phase = roadmap.phases[1]
+        #expect(phase.steps.checked == 2 && phase.steps.total == 4)
+        #expect(phase.deferredSteps == 2)
+        #expect(phase.progress == 0.5)
+        #expect(phase.tasks.map(\.task.status) == [.done, .inProgress])
+        #expect(phase.nextTask?.task.number == 2)
+        #expect(phase.nextTask?.task.nextStep?.text == "c")
+    }
+
+    @Test func onlyDeferredBoxesLeftMeansThePhaseAwaitsSignOff() throws {
+        let plan = "### Task 1: A\n- [x] a\n- [-] b\n### Task 2: Toute reportée\n- [-] a\n- [-] b\n"
+        let roadmap = try loaded(spec: Samples.spec, plans: ["phase-2-inventaire.md": plan])
+        let phase = roadmap.phases[1]
+        #expect(phase.tasks.map(\.task.status) == [.done, .done])
+        #expect(phase.nextTask == nil)
+        #expect(phase.awaitsSignOff)
+        #expect(phase.progress == 1)
+        #expect(phase.isMeasurable(in: roadmap))
+        #expect(phase.plansWithoutSteps.isEmpty)
+        // Un plan dont toutes les cases sont reportées n'est pas « sans case », et compte pour fini.
+        let allDeferred = try loaded(spec: Samples.spec, plans: ["phase-2-inventaire.md": "### Task 1: A\n- [-] a\n"])
+        #expect(allDeferred.phases[1].plansWithoutSteps.isEmpty)
+        #expect(allDeferred.phases[1].progress == 1 && allDeferred.phases[1].awaitsSignOff)
+    }
+
     @Test func everyPhaseWeighsTheSameInTheOverallProgress() throws {
         let roadmap = try loaded(spec: Samples.spec, plans: ["phase-2-inventaire.md": Samples.planPhase2])
         #expect(abs(roadmap.progress - (1 + 0.6 + 0) / 3) < 1e-9)
