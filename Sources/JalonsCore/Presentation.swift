@@ -31,7 +31,7 @@ public enum Presentation {
         return nil
     }
 
-    /// La ligne du menu sous la prochaine tâche : sa première case non cochée. Rien quand la ligne du dessus signale un
+    /// La ligne du menu sous la prochaine tâche : sa première case ni cochée ni reportée. Rien quand la ligne du dessus signale un
     /// problème de lecture.
     public static func currentStepDetail(_ phase: Phase, in roadmap: Roadmap) -> String? {
         guard let step = highlightedTask(phase, in: roadmap)?.task.nextStep else { return nil }
