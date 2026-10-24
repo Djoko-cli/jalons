@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION="0.1.0"
+VERSION="0.2.0"
 BUNDLE_ID="io.github.djoko-cli.jalons"
 APP="build/Jalons.app"
 ICON="Ressources/AppIcon.icon"
