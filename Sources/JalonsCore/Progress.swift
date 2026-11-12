@@ -1,5 +1,5 @@
 import Foundation
-import OrchestreCore
+import PlanParsing
 
 public enum TaskStatus: Sendable, Equatable {
     case done, inProgress, todo

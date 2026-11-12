@@ -17,7 +17,7 @@ It **reads and never writes.** The roadmap comes from a design spec and its plan
 - **Phases:** the checkboxes of the spec whose label starts with `Phase N`, for example `- [ ] Phase 1: foundation` or `- [x] Phase 2 — inventory`. A checked box means the phase is done.
 - **Tasks:** the plans in the `plans/` folder next to the spec's folder (`docs/superpowers/specs/x.md` → `docs/superpowers/plans/`).
   - A plan belongs to phase N when its file name contains `phase-N`, for example `2026-10-16-phase-1-foundation.md`.
-  - Its tasks are its `### Task N` (or `### Tâche N`) headings, and the checkboxes under them are its steps. Checkboxes outside any task count as steps too. Plans are read with the plan parser of Orchestre.
+  - Its tasks are its `### Task N` (or `### Tâche N`) headings, and the checkboxes under them are its steps. Checkboxes outside any task count as steps too. Plans are read by the `PlanParsing` module (`Sources/PlanParsing`), the plan parser of Orchestre, another tool by the same author, copied here so that Jalons builds on its own.
   - A step marked `- [-]` is **deferred**: postponed to another phase, replaced, or no longer relevant (say why in the text after the box). It is shown as such, neither done nor left: it stays out of the progress count, a task with only deferred steps left is done, and the next step is never a deferred one.
 - **Other working copies:** when the spec lives in a git repository, Jalons also reads the same `plans/` folder in every other working copy of the repository (`git worktree`), where a plan often moves forward before it is merged back. For each plan file, it keeps the version with the most steps done or deferred (on a tie, the followed spec's own); a plan found only in another copy joins its phase. Every plan read in another copy, whether its version won or it exists only there, shows a branch glyph with the copy's branch (or the copy's folder name, for a detached copy), and the menu adds « (copie de travail) » to its tasks. Copies are read from git's own files, without running git, and a copy added or removed is noticed at once.
 
@@ -43,7 +43,6 @@ They show up in the menu, in the timeline, on the menu bar icon (orange triangle
 
 - The app runs on macOS 15 or later, with Liquid Glass on macOS 26 and later.
 - Building it takes Swift 6 and the macOS 26 SDK (Xcode 26 or later), for the Liquid Glass APIs.
-- The `OrchestreCore` library of Orchestre, in a checkout next to this one (`../orchestre`).
 
 ### Build and run
 
@@ -109,7 +108,7 @@ Elle **lit et n'écrit jamais.** La feuille de route vient d'une spec de concept
 - **Les phases :** les cases de la spec dont le libellé commence par `Phase N`, par exemple `- [ ] Phase 1 : socle` ou `- [x] Phase 2 — inventaire`. Une case cochée veut dire que la phase est finie.
 - **Les tâches :** les plans du dossier `plans/` voisin du dossier de la spec (`docs/superpowers/specs/x.md` → `docs/superpowers/plans/`).
   - Un plan appartient à la phase N quand son nom de fichier contient `phase-N`, par exemple `2026-10-16-phase-1-socle.md`.
-  - Ses tâches sont ses titres `### Task N` (ou `### Tâche N`), et les cases placées sous eux sont ses étapes. Les cases hors de toute tâche comptent aussi comme étapes. Les plans sont lus avec le lecteur de plans d'Orchestre.
+  - Ses tâches sont ses titres `### Task N` (ou `### Tâche N`), et les cases placées sous eux sont ses étapes. Les cases hors de toute tâche comptent aussi comme étapes. Les plans sont lus par le module `PlanParsing` (`Sources/PlanParsing`) : le lecteur de plans d'Orchestre, un autre outil du même auteur, copié ici pour que Jalons se compile seul.
   - Une étape marquée `- [-]` est **reportée** : renvoyée à une autre phase, remplacée ou devenue sans objet (la raison s'écrit dans le texte après la case). Elle est affichée comme telle, ni faite ni à faire : elle reste hors du compte de l'avancement, une tâche dont il ne reste que des étapes reportées est faite, et la prochaine étape n'est jamais une étape reportée.
 - **Les autres copies de travail :** quand la spec est dans un dépôt git, Jalons lit aussi le même dossier `plans/` dans chacune des autres copies de travail du dépôt (`git worktree`), où un plan avance souvent avant de remonter. Pour chaque fichier de plan, il retient la version qui a le plus d'étapes faites ou reportées (à égalité, celle de la spec suivie) ; un plan qui n'existe que dans une autre copie rejoint sa phase. Tout plan lu dans une autre copie, que sa version l'ait emporté ou qu'il n'existe que là, porte un glyphe de branche avec la branche de sa copie (ou le nom de son dossier, pour une copie en tête détachée), et le menu ajoute « (copie de travail) » à ses tâches. Les copies se lisent dans les fichiers de git, sans le lancer, et une copie ajoutée ou retirée se voit aussitôt.
 
@@ -135,7 +134,6 @@ Ils apparaissent dans le menu, dans la frise, sur l'icône de la barre des menus
 
 - L'app tourne sur macOS 15 ou plus récent, avec Liquid Glass à partir de macOS 26.
 - Pour la compiler, il faut Swift 6 et le SDK de macOS 26 (Xcode 26 ou plus récent), pour les API de Liquid Glass.
-- La bibliothèque `OrchestreCore` d'Orchestre, dans une copie voisine de celle-ci (`../orchestre`).
 
 ### Compiler et lancer
 

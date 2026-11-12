@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 @testable import JalonsCore
-import OrchestreCore
+import PlanParsing
 
 @Suite struct PresentationTests {
     func loaded(spec: String = Samples.spec, plans: [String: String] = [:],

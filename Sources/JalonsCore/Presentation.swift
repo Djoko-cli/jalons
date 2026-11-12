@@ -1,5 +1,5 @@
 import Foundation
-import OrchestreCore
+import PlanParsing
 
 /// Les textes composés de l'interface (frise, menu, icône), en fonctions pures pour être testés. Règle : une lecture
 /// incomplète se dit toujours en clair, avant tout autre état ; elle ne passe jamais pour un « plan à écrire » ou un 0 %.

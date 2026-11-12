@@ -1,5 +1,5 @@
 import Foundation
-import OrchestreCore
+import PlanParsing
 
 /// Lit une feuille de route complète : la spec, puis les plans de chaque phase (lecteur de plans d'Orchestre).
 ///

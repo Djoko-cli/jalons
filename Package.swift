@@ -7,15 +7,13 @@ let package = Package(
     products: [
         .executable(name: "Jalons", targets: ["Jalons"]),
     ],
-    dependencies: [
-        // Le lecteur de plans d'Orchestre, depuis le dépôt voisin.
-        .package(path: "../orchestre"),
-    ],
     targets: [
-        .target(name: "JalonsCore", dependencies: [.product(name: "OrchestreCore", package: "orchestre")]),
+        // Le lecteur de plans, copié d'Orchestre (voir l'en-tête de ses fichiers).
+        .target(name: "PlanParsing"),
+        .target(name: "JalonsCore", dependencies: ["PlanParsing"]),
         .executableTarget(name: "Jalons", dependencies: ["JalonsCore"]),
-        .testTarget(name: "JalonsCoreTests",
-                    dependencies: ["JalonsCore", .product(name: "OrchestreCore", package: "orchestre")]),
+        .testTarget(name: "PlanParsingTests", dependencies: ["PlanParsing"]),
+        .testTarget(name: "JalonsCoreTests", dependencies: ["JalonsCore", "PlanParsing"]),
         .testTarget(name: "JalonsAppTests", dependencies: ["Jalons"]),
     ]
 )

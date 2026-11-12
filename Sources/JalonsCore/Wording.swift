@@ -1,5 +1,5 @@
 import Foundation
-import OrchestreCore
+import PlanParsing
 
 /// Les textes affichés, en français.
 public enum Wording {

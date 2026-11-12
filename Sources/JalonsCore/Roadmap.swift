@@ -1,5 +1,5 @@
 import Foundation
-import OrchestreCore
+import PlanParsing
 
 /// Une case « Phase N : titre » de la feuille de route d'une spec.
 public struct RoadmapEntry: Sendable, Equatable {
