@@ -45,7 +45,7 @@ Download `Jalons-X.Y.Z.zip` from the [Releases](https://github.com/Djoko-cli/jal
 
 ### Requirements
 
-- The app runs on macOS 15 or later, with Liquid Glass on macOS 26 and later.
+- The app runs on a Mac with Apple silicon, on macOS 15 or later, with Liquid Glass on macOS 26 and later.
 - Building it takes Swift 6 and the macOS 26 SDK (Xcode 26 or later), for the Liquid Glass APIs.
 
 ### Build and run
@@ -161,7 +161,7 @@ Télécharge `Jalons-X.Y.Z.zip` depuis la page [Releases](https://github.com/Djo
 
 ### Prérequis
 
-- L'app tourne sur macOS 15 ou plus récent, avec Liquid Glass à partir de macOS 26.
+- L'app tourne sur un Mac à puce Apple, sous macOS 15 ou plus récent, avec Liquid Glass à partir de macOS 26.
 - Pour la compiler, il faut Swift 6 et le SDK de macOS 26 (Xcode 26 ou plus récent), pour les API de Liquid Glass.
 
 ### Compiler et lancer
