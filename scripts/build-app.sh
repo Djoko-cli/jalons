@@ -1,12 +1,37 @@
 #!/bin/bash
 # Compile Jalons en release et assemble build/Jalons.app (signature ad hoc), sur le modèle d'Orchestre.
-# Usage : scripts/build-app.sh
+# Usage : scripts/build-app.sh [--sortie <dossier>] [--identifiant <id>]
+#   --sortie       dossier où poser l'app (build/ par défaut) ;
+#   --identifiant  identifiant du paquet (io.github.djoko-cli.jalons par défaut) ; pour <défaut>.<suffixe>, l'app
+#                  s'appelle Jalons-<suffixe>.app (la répétition de scripts/publier.sh).
+# Le chemin absolu de l'app est imprimé sur la dernière ligne (scripts/publication.py le lit).
 set -euo pipefail
-cd "$(dirname "$0")/.."
 
 VERSION="0.3.0"
 BUNDLE_ID="io.github.djoko-cli.jalons"
-APP="build/Jalons.app"
+SORTIE="build"
+
+usage() { echo "Usage : scripts/build-app.sh [--sortie <dossier>] [--identifiant <id>]" >&2; exit 2; }
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --sortie|--identifiant)
+            [ $# -ge 2 ] && [ -n "$2" ] || usage
+            if [ "$1" = --sortie ]; then SORTIE="$2"; else BUNDLE_ID="$2"; fi
+            shift 2 ;;
+        *) usage ;;
+    esac
+done
+# Un dossier de sortie relatif se lit depuis le dossier d'appel, avant le cd vers le dépôt.
+case "$SORTIE" in /*) ;; build) ;; *) SORTIE="$PWD/$SORTIE" ;; esac
+cd "$(dirname "$0")/.."
+
+NOM="Jalons"
+case "$BUNDLE_ID" in
+    io.github.djoko-cli.jalons) ;;
+    io.github.djoko-cli.jalons.?*) NOM="Jalons-${BUNDLE_ID#io.github.djoko-cli.jalons.}" ;;
+    *) echo "ERREUR : identifiant inattendu : $BUNDLE_ID" >&2; exit 2 ;;
+esac
+APP="$SORTIE/$NOM.app"
 ICON="Ressources/AppIcon.icon"
 
 # Pas d'app sans icône : on s'arrête avant de compiler si elle manque.
@@ -19,7 +44,7 @@ swift build -c release --product Jalons
 BIN_DIR="$(swift build -c release --product Jalons --show-bin-path)"
 
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+mkdir -p build "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/Jalons" "$APP/Contents/MacOS/Jalons"
 
 # L'icône Icon Composer, compilée en AppIcon.icns et Assets.car.
@@ -60,3 +85,4 @@ plutil -lint "$APP/Contents/Info.plist"
 codesign --force --sign - --timestamp=none "$APP"
 codesign --verify --strict "$APP"
 echo "OK : $APP ($VERSION)"
+(cd "$APP" && pwd)
