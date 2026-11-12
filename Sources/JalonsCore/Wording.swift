@@ -46,6 +46,14 @@ public enum Wording {
         return task.total > 0 ? "\(count) · \(deferred)" : deferred
     }
 
+    /// Après une tâche dont le plan a été lu dans une autre copie de travail du dépôt.
+    public static let inAnotherCopy = "(copie de travail)"
+
+    /// L'aide d'un plan lu dans une autre copie de travail du dépôt.
+    public static func copyHelp(_ copyName: String) -> String {
+        "Lu dans la copie de travail « \(copyName) », pas encore remonté"
+    }
+
     /// « 1 phase terminée sur 7 », « 3 phases terminées sur 7 ».
     public static func phasesDone(_ done: Int, of total: Int) -> String {
         "\(done) \(done > 1 ? "phases terminées" : "phase terminée") sur \(total)"

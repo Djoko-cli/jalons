@@ -1,4 +1,5 @@
 import Foundation
+import JalonsCore
 import Testing
 @testable import Jalons
 

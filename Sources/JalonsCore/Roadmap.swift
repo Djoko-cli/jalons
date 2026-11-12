@@ -30,6 +30,13 @@ public struct PlanFile: Sendable, Equatable {
     public var looseTotal: Int
     /// Cases reportées hors de toute tâche.
     public var looseDeferred = 0
+    /// La copie de travail où ce plan a été lu, quand ce n'est pas celle de la spec suivie (voir `RoadmapLoader`).
+    public var copyName: String?
+
+    /// Cases faites ou reportées : la version d'un plan qui en a le plus est la plus avancée.
+    public var settledSteps: Int {
+        looseChecked + looseDeferred + tasks.reduce(0) { $0 + $1.checked + $1.deferred }
+    }
 }
 
 /// Une phase : sa case dans la feuille de route et les plans qui la détaillent.

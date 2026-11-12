@@ -28,10 +28,13 @@ public struct PhaseTask: Sendable, Equatable, Identifiable {
     public var task: ParsedTask
     /// Rang de ce numéro de tâche dans le plan : 0, ou 1 pour une deuxième « Tâche 3 », etc.
     public var occurrence = 0
+    /// La copie de travail où son plan a été lu, quand ce n'est pas celle de la spec suivie.
+    public var copyName: String?
 
     public var id: String { "\(plan.path)#\(task.line)" }
-    /// La même tâche d'une lecture à l'autre, même quand des lignes s'insèrent au-dessus d'elle dans le plan.
-    public var key: String { "\(plan.path)#tâche-\(task.number)-\(occurrence)" }
+    /// La même tâche d'une lecture à l'autre, même quand des lignes s'insèrent au-dessus d'elle dans le plan ou que la
+    /// version retenue passe d'une copie de travail à une autre : le nom du fichier, pas son chemin.
+    public var key: String { "\(plan.lastPathComponent)#tâche-\(task.number)-\(occurrence)" }
 }
 
 extension Phase {
@@ -72,7 +75,7 @@ extension Phase {
             return plan.tasks.map { task in
                 defer { seen[task.number, default: 0] += 1 }
                 return PhaseTask(plan: plan.url, planTitle: plan.title ?? plan.url.deletingPathExtension().lastPathComponent,
-                                 task: task, occurrence: seen[task.number] ?? 0)
+                                 task: task, occurrence: seen[task.number] ?? 0, copyName: plan.copyName)
             }
         }
     }

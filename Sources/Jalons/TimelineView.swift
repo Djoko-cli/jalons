@@ -244,10 +244,8 @@ private struct TaskList: View {
         let planStarts = Set(Dictionary(grouping: tasks, by: \.plan).values.compactMap { $0.first?.id })
         VStack(alignment: .leading, spacing: 5) {
             ForEach(tasks) { item in
-                if phase.plans.count > 1, planStarts.contains(item.id) {
-                    Text(item.planTitle)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                if planStarts.contains(item.id), phase.plans.count > 1 || item.copyName != nil {
+                    PlanHeader(title: item.planTitle, copyName: item.copyName)
                         .padding(.top, item.id == tasks.first?.id ? 0 : 4)
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -305,6 +303,34 @@ private struct TaskList: View {
     private func isExpanded(_ item: PhaseTask) -> Bool {
         guard !item.task.steps.isEmpty else { return false }
         return overrides[item.key] ?? (item.id == highlighted?.id)
+    }
+}
+
+/// Le titre d'un plan dans la liste des tâches, avec le glyphe de branche et le nom de la copie quand il a été lu dans
+/// une autre copie de travail du dépôt (pas encore remonté). Le glyphe est libre : la couleur et l'icône codent déjà
+/// l'état des phases et des tâches, l'orange les avertissements.
+private struct PlanHeader: View {
+    let title: String
+    let copyName: String?
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if copyName != nil {
+                Image(systemName: "arrow.triangle.branch")
+            }
+            Text(title)
+                .lineLimit(1)
+            if let copyName {
+                Text("· \(copyName)")
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .help(copyName.map(Wording.copyHelp) ?? title)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(copyName.map { "\(title), \(Wording.copyHelp($0))" } ?? title)
     }
 }
 

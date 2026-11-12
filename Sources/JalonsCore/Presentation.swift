@@ -71,10 +71,12 @@ public enum Presentation {
         phase.isMeasurable(in: roadmap) ? Wording.percent(phase.progress) : "?"
     }
 
-    /// « Tâche 2 : … », précédé du titre du plan quand la phase en a plusieurs (les numéros s'y répètent).
+    /// « Tâche 2 : … », précédé du titre du plan quand la phase en a plusieurs (les numéros s'y répètent), et suivi de
+    /// « (copie de travail) » quand son plan a été lu dans une autre copie du dépôt.
     public static func taskLabel(_ item: PhaseTask, in phase: Phase) -> String {
         let label = Wording.taskLabel(item.task)
-        return phase.plans.count > 1 ? "\(item.planTitle) · \(label)" : label
+        let named = phase.plans.count > 1 ? "\(item.planTitle) · \(label)" : label
+        return item.copyName == nil ? named : "\(named) \(Wording.inAnotherCopy)"
     }
 
     /// Les avertissements de lecture, dans l'ordre où les montrer.

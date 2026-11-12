@@ -19,6 +19,8 @@ final class RoadmapTracker: Identifiable {
     @ObservationIgnored private var watcher: FileWatcher?
     @ObservationIgnored private var reloadPending = false
     @ObservationIgnored private var fallbackReload: Task<Void, Never>?
+    /// Ce que la surveillance regarde ; refaite quand une copie de travail du dépôt apparaît ou disparaît.
+    @ObservationIgnored private var watchedScope: WatchScope?
     /// Arrêté : un événement encore en vol ne relit plus rien.
     @ObservationIgnored private var isStopped = false
     @ObservationIgnored private var panel: FloatingPanelController!
@@ -66,6 +68,16 @@ final class RoadmapTracker: Identifiable {
         guard !isStopped else { return }
         state = RoadmapLoader.load(specURL: URL(fileURLWithPath: canonicalPath(specURL)))
         model?.refreshLaunchAtLogin()
+        // Une copie apparue ou disparue : surveiller ses plans, puis relire ce qui a pu changer entre-temps.
+        if watchedScope != nil, currentScope() != watchedScope {
+            startWatching()
+            scheduleReload()
+        }
+    }
+
+    private func currentScope() -> WatchScope {
+        let spec = URL(fileURLWithPath: canonicalPath(specURL))
+        return WatchScope(specURL: spec, sources: PlanLocator.sources(forSpec: spec))
     }
 
     /// Les événements arrivent par rafales : la première programme une relecture, les suivantes s'y joignent.
@@ -98,22 +110,18 @@ final class RoadmapTracker: Identifiable {
         NSWorkspace.shared.open(url)
     }
 
-    /// Surveille le dossier de la spec et celui des plans (y compris s'il n'existe pas encore : on surveille leur parent).
-    /// Les chemins comparés sont les chemins réels, tels que FSEvents les rapporte.
+    /// Surveille le dossier de la spec, celui des plans et ceux des autres copies de travail du dépôt (voir `WatchScope`).
     private func startWatching() {
         watcher?.stop()
         watcher = nil
         fallbackReload?.cancel()
         fallbackReload = nil
         watchUnavailable = false
-        guard !options.noWatch else { return }
-        let specDirectory = canonicalPath(specURL.deletingLastPathComponent())
-        let root = (specDirectory as NSString).deletingLastPathComponent
-        let plansDirectory = (root as NSString).appendingPathComponent("plans")
-        let watcher = FileWatcher(paths: [root], accepts: { path in
-            path == specDirectory || path.hasPrefix(specDirectory + "/")
-                || path == plansDirectory || path.hasPrefix(plansDirectory + "/")
-        }, handler: { [weak self] in
+        watchedScope = nil
+        guard !options.noWatch, !isStopped else { return }
+        let scope = currentScope()
+        watchedScope = scope
+        let watcher = FileWatcher(paths: scope.roots, accepts: { scope.accepts($0) }, handler: { [weak self] in
             Task { @MainActor in self?.scheduleReload() }
         })
         if watcher.start() {

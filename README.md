@@ -19,6 +19,7 @@ It **reads and never writes.** The roadmap comes from a design spec and its plan
   - A plan belongs to phase N when its file name contains `phase-N`, for example `2026-10-16-phase-1-foundation.md`.
   - Its tasks are its `### Task N` (or `### Tâche N`) headings, and the checkboxes under them are its steps. Checkboxes outside any task count as steps too. Plans are read with the plan parser of Orchestre.
   - A step marked `- [-]` is **deferred**: postponed to another phase, replaced, or no longer relevant (say why in the text after the box). It is shown as such, neither done nor left: it stays out of the progress count, a task with only deferred steps left is done, and the next step is never a deferred one.
+- **Other working copies:** when the spec lives in a git repository, Jalons also reads the same `plans/` folder in every other working copy of the repository (`git worktree`), where a plan often moves forward before it is merged back. For each plan file, it keeps the version with the most steps done or deferred (on a tie, the followed spec's own); a plan found only in another copy joins its phase. Such a plan shows a branch glyph and the copy's branch, and the menu adds « (copie de travail) » to its tasks. Copies are read from git's own files, without running git, and a copy added or removed is noticed at once.
 
 ### How progress is computed
 
@@ -88,6 +89,8 @@ This repository may become public, so `.githooks/` holds a guard that refuses a 
 
 - The `plans/` folder belongs to the followed spec. In a repository where several specs share it, their plans show up as unattached, and a plan of another spec named `phase-N` is counted in phase N.
 - For a spec stored outside a `…/specs/` folder, Jalons watches the folder above the spec's folder, which can be broad.
+- Other working copies count until they are removed (`git worktree remove`): an abandoned copy that kept a more advanced plan still shows it, with its branch glyph.
+- Versions of a plan are matched by file name: a plan renamed in another copy counts as a second plan. When versions have as many steps done, the followed spec's wins, even if another copy's has more steps.
 
 ---
 
@@ -106,6 +109,7 @@ Elle **lit et n'écrit jamais.** La feuille de route vient d'une spec de concept
   - Un plan appartient à la phase N quand son nom de fichier contient `phase-N`, par exemple `2026-10-16-phase-1-socle.md`.
   - Ses tâches sont ses titres `### Task N` (ou `### Tâche N`), et les cases placées sous eux sont ses étapes. Les cases hors de toute tâche comptent aussi comme étapes. Les plans sont lus avec le lecteur de plans d'Orchestre.
   - Une étape marquée `- [-]` est **reportée** : renvoyée à une autre phase, remplacée ou devenue sans objet (la raison s'écrit dans le texte après la case). Elle est affichée comme telle, ni faite ni à faire : elle reste hors du compte de l'avancement, une tâche dont il ne reste que des étapes reportées est faite, et la prochaine étape n'est jamais une étape reportée.
+- **Les autres copies de travail :** quand la spec est dans un dépôt git, Jalons lit aussi le même dossier `plans/` dans chacune des autres copies de travail du dépôt (`git worktree`), où un plan avance souvent avant de remonter. Pour chaque fichier de plan, il retient la version qui a le plus d'étapes faites ou reportées (à égalité, celle de la spec suivie) ; un plan qui n'existe que dans une autre copie rejoint sa phase. Un tel plan porte un glyphe de branche et le nom de la branche de sa copie, et le menu ajoute « (copie de travail) » à ses tâches. Les copies se lisent dans les fichiers de git, sans le lancer, et une copie ajoutée ou retirée se voit aussitôt.
 
 ### Le calcul de l'avancement
 
@@ -175,3 +179,5 @@ Ce dépôt peut devenir public. Son dossier `.githooks/` contient un garde qui r
 
 - Le dossier `plans/` appartient à la spec suivie. Dans un dépôt où plusieurs specs le partagent, leurs plans apparaissent comme non rattachés, et le plan d'une autre spec nommé `phase-N` est compté dans la phase N.
 - Pour une spec rangée hors d'un dossier `…/specs/`, Jalons surveille le dossier situé au-dessus de celui de la spec, ce qui peut être large.
+- Les autres copies de travail comptent jusqu'à leur suppression (`git worktree remove`) : une copie abandonnée qui garde un plan plus avancé le montre toujours, avec son glyphe de branche.
+- Les versions d'un plan se rapprochent par leur nom de fichier : un plan renommé dans une autre copie compte comme un second plan. À nombre égal d'étapes faites, la version de la spec suivie l'emporte, même si celle d'une autre copie a plus d'étapes.

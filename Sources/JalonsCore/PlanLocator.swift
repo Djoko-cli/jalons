@@ -16,6 +16,38 @@ public enum PlanLocator {
         spec.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("plans", isDirectory: true)
     }
 
+    /// Le dossier des plans d'une autre copie de travail du dépôt.
+    public struct CopyPlans: Sendable, Equatable {
+        /// La branche de la copie, ou le nom de son dossier.
+        public var name: String
+        /// La racine de la copie.
+        public var root: URL
+        public var directory: URL
+    }
+
+    /// Où lire les plans d'une spec : son dossier des plans, le même dossier dans chacune des autres copies de travail
+    /// du dépôt (chemins réels), et le registre des copies à surveiller. Hors d'un dépôt git, le seul dossier de la spec.
+    public struct Sources: Sendable, Equatable {
+        public var directory: URL
+        public var otherCopies: [CopyPlans]
+        public var registry: URL?
+    }
+
+    public static func sources(forSpec spec: URL, fileManager: FileManager = .default) -> Sources {
+        let directory = plansDirectory(forSpec: spec)
+        guard let copies = WorkingCopies.around(spec, fileManager: fileManager) else {
+            return Sources(directory: directory, otherCopies: [], registry: nil)
+        }
+        let real = canonicalPath(directory)
+        let root = copies.current.root.path + "/"
+        guard real.hasPrefix(root) else { return Sources(directory: directory, otherCopies: [], registry: copies.registry) }
+        let relative = String(real.dropFirst(root.count))
+        let others = copies.others.map {
+            CopyPlans(name: $0.name, root: $0.root, directory: $0.root.appendingPathComponent(relative, isDirectory: true))
+        }
+        return Sources(directory: directory, otherCopies: others, registry: copies.registry)
+    }
+
     /// `…phase-3-…`, `phase_03`, `phase3.md` → 3 ; le mot doit être isolé (`emphase-2.md` ne compte pas).
     public static func phaseNumber(inFileName name: String) -> Int? {
         guard name.lowercased().hasSuffix(".md"),
