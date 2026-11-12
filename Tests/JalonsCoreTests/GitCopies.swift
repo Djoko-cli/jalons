@@ -16,12 +16,13 @@ struct GitCopies {
         try git(["commit", "-q", "--allow-empty", "-m", "départ"], in: main)
     }
 
-    /// Ajoute une copie de travail sur une nouvelle branche, ou en tête détachée si `branch` est nil.
+    /// Ajoute une copie de travail sur une nouvelle branche, ou en tête détachée si `branch` est nil ; `relative` : git
+    /// écrit des chemins relatifs dans `gitdir` et dans le `.git` de la copie (`--relative-paths`).
     @discardableResult
-    func addCopy(_ folder: String, branch: String?) throws -> URL {
+    func addCopy(_ folder: String, branch: String?, relative: Bool = false) throws -> URL {
         let url = root.appendingPathComponent(folder, isDirectory: true)
         let mode = branch.map { ["-b", $0] } ?? ["--detach"]
-        try git(["worktree", "add", "-q"] + mode + [url.path], in: main)
+        try git(["worktree", "add", "-q"] + (relative ? ["--relative-paths"] : []) + mode + [url.path], in: main)
         return url
     }
 
@@ -46,6 +47,7 @@ struct GitCopies {
         process.currentDirectoryURL = directory
         var environment = ProcessInfo.processInfo.environment.filter { !$0.key.hasPrefix("GIT_") }
         environment["GIT_CONFIG_NOSYSTEM"] = "1"
+        environment["GIT_CONFIG_GLOBAL"] = "/dev/null"
         process.environment = environment
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice

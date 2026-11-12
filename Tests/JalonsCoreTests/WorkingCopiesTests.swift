@@ -41,6 +41,35 @@ import Testing
         #expect(WorkingCopies.around(spec)?.others.map(\.name) == ["fonction"])
     }
 
+    @Test func copiesWrittenWithRelativePathsAreFound() throws {
+        let git = try GitCopies()
+        defer { git.remove() }
+        let relative = try git.addCopy("copie-relative", branch: "relative", relative: true)
+        let gitdir = try String(contentsOf: git.main.appendingPathComponent(".git/worktrees/copie-relative/gitdir"),
+                                encoding: .utf8)
+        #expect(!gitdir.hasPrefix("/"))
+        let fromMain = try git.write("# Projet\n", to: specPath, in: git.main)
+        #expect(WorkingCopies.around(fromMain)?.others == [WorkingCopy(root: relative, name: "relative")])
+        let fromCopy = try git.write("# Projet\n", to: specPath, in: relative)
+        #expect(WorkingCopies.around(fromCopy)?.current == WorkingCopy(root: relative, name: "relative"))
+        #expect(WorkingCopies.around(fromCopy)?.others == [WorkingCopy(root: git.main, name: "main")])
+    }
+
+    @Test func aBareRepositoryInsideDotGitIsNotACopy() throws {
+        let git = try GitCopies()
+        defer { git.remove() }
+        let project = git.root.appendingPathComponent("projet", isDirectory: true)
+        try FileManager.default.createDirectory(at: project, withIntermediateDirectories: true)
+        try git.git(["clone", "-q", "--bare", git.main.path, project.appendingPathComponent(".git").path], in: git.root)
+        let copy = project.appendingPathComponent("copie-main", isDirectory: true)
+        try git.git(["worktree", "add", "-q", "-b", "travail", copy.path], in: project.appendingPathComponent(".git"))
+        let spec = try git.write("# Projet\n", to: specPath, in: copy)
+
+        let copies = try #require(WorkingCopies.around(spec))
+        #expect(copies.current == WorkingCopy(root: copy, name: "travail"))
+        #expect(copies.others.isEmpty)
+    }
+
     @Test func aSubmoduleDoesNotBorrowTheCopiesOfItsParent() throws {
         let git = try GitCopies()
         defer { git.remove() }
@@ -230,6 +259,7 @@ import Testing
         #expect(scope.accepts(registry + "/copie-fonction/gitdir"))
         #expect(scope.accepts(registry + "/copie-fonction/HEAD"))
         #expect(!scope.accepts(git.main.appendingPathComponent(".git/index").path))
+        #expect(scope.accepts(git.main.appendingPathComponent(".git/HEAD").path))
         #expect(scope.accepts(git.main.appendingPathComponent(spec).path))
         #expect(scope.accepts(git.main.appendingPathComponent(plans + "2026-01-02-phase-2-x.md").path))
         #expect(scope.accepts(other.appendingPathComponent(plans + "2026-01-02-phase-2-x.md").path))

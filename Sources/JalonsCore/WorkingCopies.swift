@@ -28,8 +28,9 @@ public struct WorkingCopies: Sendable, Equatable {
     public static func around(_ url: URL, fileManager: FileManager = .default) -> WorkingCopies? {
         guard let (currentRoot, common) = repository(containing: url, fileManager: fileManager) else { return nil }
         var copies: [WorkingCopy] = []
-        // La copie principale : celle dont le `.git` est le dossier commun (pas pour un dépôt nu).
-        if common.lastPathComponent == ".git" {
+        // La copie principale : celle dont le `.git` est le dossier commun. Pas pour un dépôt nu, même rangé dans un
+        // dossier `.git` (une disposition courante pour ne travailler que dans des copies ajoutées).
+        if common.lastPathComponent == ".git", !isBare(common) {
             let mainRoot = common.deletingLastPathComponent()
             copies.append(WorkingCopy(root: mainRoot, name: branch(in: common, root: mainRoot)))
         }
@@ -38,7 +39,10 @@ public struct WorkingCopies: Sendable, Equatable {
         for entry in entries.sorted() {
             let admin = registry.appendingPathComponent(entry, isDirectory: true)
             guard let gitdir = firstLine(admin.appendingPathComponent("gitdir")) else { continue }
-            let root = URL(fileURLWithPath: canonicalPath(URL(fileURLWithPath: gitdir).deletingLastPathComponent()))
+            // Absolu d'ordinaire ; relatif au dossier de la copie dans `.git/worktrees` avec `--relative-paths`.
+            let dotGit = gitdir.hasPrefix("/") ? URL(fileURLWithPath: gitdir)
+                : admin.appendingPathComponent(gitdir).standardizedFileURL
+            let root = URL(fileURLWithPath: canonicalPath(dotGit.deletingLastPathComponent()))
             var isDirectory: ObjCBool = false
             guard fileManager.fileExists(atPath: root.path, isDirectory: &isDirectory), isDirectory.boolValue else {
                 continue
@@ -78,6 +82,19 @@ public struct WorkingCopies: Sendable, Equatable {
             guard parent.path != directory.path else { return nil }
             directory = parent
         }
+    }
+
+    /// Un dépôt nu : `bare = true` dans la section `[core]` de son `config`.
+    static func isBare(_ common: URL) -> Bool {
+        guard let data = try? Data(contentsOf: common.appendingPathComponent("config")),
+              let text = String(data: data, encoding: .utf8) else { return false }
+        var inCore = false
+        for raw in text.split(whereSeparator: \.isNewline) {
+            let line = raw.trimmingCharacters(in: .whitespaces).lowercased()
+            if line.hasPrefix("[") { inCore = line.hasPrefix("[core]") }
+            if inCore, line.replacingOccurrences(of: " ", with: "") == "bare=true" { return true }
+        }
+        return false
     }
 
     /// « ref: refs/heads/fonction » → « fonction » ; une tête détachée (un hash) → le nom du dossier de la copie.

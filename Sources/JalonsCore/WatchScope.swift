@@ -5,8 +5,9 @@ import Foundation
 ///
 /// FSEvents reçoit des dossiers qui existent toujours : le parent du dossier de la spec, la racine de chaque autre copie
 /// (son dossier des plans peut ne pas exister encore) et le dossier git commun (son registre `worktrees` naît avec la
-/// première copie ajoutée et disparaît avec la dernière). Seuls comptent les plans, la spec, et dans le registre
-/// l'arrivée ou le départ d'une copie, son `gitdir` et son `HEAD` : jamais l'index ni les journaux de git.
+/// première copie ajoutée et disparaît avec la dernière). Seuls comptent les plans, la spec, le `HEAD` de la copie
+/// principale, et dans le registre l'arrivée ou le départ d'une copie, son `gitdir` et son `HEAD` : jamais l'index ni
+/// les journaux de git.
 public struct WatchScope: Sendable, Equatable {
     /// Les dossiers confiés à FSEvents.
     public var roots: [String]
@@ -30,6 +31,8 @@ public struct WatchScope: Sendable, Equatable {
         guard let registry else { return false }
         let parent = (path as NSString).deletingLastPathComponent
         if path == registry || parent == registry { return true }
+        // Le `HEAD` de la copie principale, dans le dossier commun : son nom de branche affiché.
+        if path == (registry as NSString).deletingLastPathComponent + "/HEAD" { return true }
         let name = (path as NSString).lastPathComponent
         return (parent as NSString).deletingLastPathComponent == registry && (name == "gitdir" || name == "HEAD")
     }

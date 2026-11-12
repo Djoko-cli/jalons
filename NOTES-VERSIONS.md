@@ -4,11 +4,11 @@
 
 ### English
 
-- **Working copies:** Jalons also reads the plans of the repository's other working copies (`git worktree`), so a plan executed in a copy shows its progress before it is merged back. For each plan, the version with the most steps done or deferred wins; a plan found only in another copy joins its phase, with a branch glyph and the copy's branch. A copy added or removed is noticed at once.
+- **Working copies:** Jalons also reads the plans of the repository's other working copies (`git worktree`), so a plan executed in a copy shows its progress before it is merged back. For each plan, the version with the most steps done or deferred wins; a plan found only in another copy joins its phase. A plan read in another copy shows a branch glyph with the copy's branch. A copy added or removed is noticed at once.
 
 ### Français
 
-- **Copies de travail :** Jalons lit aussi les plans des autres copies de travail du dépôt (`git worktree`) : un plan exécuté dans une copie montre son avancement avant de remonter. Pour chaque plan, la version qui a le plus d'étapes faites ou reportées l'emporte ; un plan qui n'existe que dans une autre copie rejoint sa phase, avec un glyphe de branche et le nom de la branche de sa copie. Une copie ajoutée ou retirée se voit aussitôt.
+- **Copies de travail :** Jalons lit aussi les plans des autres copies de travail du dépôt (`git worktree`) : un plan exécuté dans une copie montre son avancement avant de remonter. Pour chaque plan, la version qui a le plus d'étapes faites ou reportées l'emporte ; un plan qui n'existe que dans une autre copie rejoint sa phase. Un plan lu dans une autre copie porte un glyphe de branche avec la branche de sa copie. Une copie ajoutée ou retirée se voit aussitôt.
 
 ## 0.2.0
 
