@@ -39,6 +39,10 @@ Jalons reports these cases in plain words:
 
 They show up in the menu, in the timeline, on the menu bar icon (orange triangle) and in its VoiceOver label. A phase whose progress cannot be measured (unreadable plan or plans folder, plan without checkboxes) shows `?` instead of a percentage, never 0 %. A plan that no phase claims is listed in the warnings, but the phase it was meant for still shows "plan to write": Jalons cannot know which one it was.
 
+### Install
+
+Download `Jalons-X.Y.Z.zip` from the [Releases](https://github.com/Djoko-cli/jalons/releases) page, unzip it and move `Jalons.app` to the Applications folder. It is signed with an Apple Developer ID and notarized, so it opens without a Gatekeeper warning.
+
 ### Requirements
 
 - The app runs on macOS 15 or later, with Liquid Glass on macOS 26 and later.
@@ -63,6 +67,27 @@ The script compiles the app icon (`Ressources/AppIcon.icon`, an Icon Composer fi
 ```bash
 swift test
 ```
+
+The publishing tool has its own tests:
+
+```bash
+python3 -m unittest discover -s scripts/tests
+```
+
+### Publishing a version
+
+```bash
+bash scripts/publier.sh X.Y.Z
+```
+
+It builds `Jalons-X.Y.Z.zip` and its `SHA256SUMS` in `build/publication/X.Y.Z/`. Run it from a full clone, with a clean tree and `VERSION` set to X.Y.Z in `scripts/build-app.sh`. In order, it:
+
+- runs the tool's tests;
+- signs the app with the only « Developer ID Application » identity of the keychain (hardened runtime, timestamp);
+- has it notarized with the `notarytool` keychain profile named by `PROFIL_NOTARISATION`, staples the ticket and checks it with Gatekeeper;
+- refuses to deliver an archive that holds a personal path or a value of `garde.local.txt`. The check reads a copy stripped of its signatures.
+
+`--repetition` rehearses the same chain under the identifier `io.github.djoko-cli.jalons.repetition`; only a rehearsal may sign ad hoc (`IDENTITE_SIGNATURE=-`) or skip notarization (`NOTARISER=0`). The tool comes from macstatusd, by the same author.
 
 ### Leak guard
 
@@ -130,6 +155,10 @@ Jalons signale ces cas en clair :
 
 Ils apparaissent dans le menu, dans la frise, sur l'icône de la barre des menus (triangle orange) et dans son libellé VoiceOver. Une phase dont l'avancement ne se mesure pas (plan ou dossier des plans illisible, plan sans case) affiche `?` au lieu d'un pourcentage, jamais 0 %. Un plan qu'aucune phase ne réclame figure dans les avertissements, mais la phase à laquelle il était destiné affiche toujours « plan à écrire » : Jalons ne peut pas savoir laquelle c'était.
 
+### Installer
+
+Télécharge `Jalons-X.Y.Z.zip` depuis la page [Releases](https://github.com/Djoko-cli/jalons/releases), décompresse-le et place `Jalons.app` dans le dossier Applications. Elle est signée par un Developer ID d'Apple et notarisée : elle s'ouvre sans alerte de Gatekeeper.
+
 ### Prérequis
 
 - L'app tourne sur macOS 15 ou plus récent, avec Liquid Glass à partir de macOS 26.
@@ -154,6 +183,27 @@ Le script compile l'icône de l'app (`Ressources/AppIcon.icon`, un fichier Icon 
 ```bash
 swift test
 ```
+
+L'outil de publication a ses propres tests :
+
+```bash
+python3 -m unittest discover -s scripts/tests
+```
+
+### Publier une version
+
+```bash
+bash scripts/publier.sh X.Y.Z
+```
+
+Il produit `Jalons-X.Y.Z.zip` et son `SHA256SUMS` dans `build/publication/X.Y.Z/`. Lance-le depuis un clone complet, avec un arbre propre et `VERSION` à X.Y.Z dans `scripts/build-app.sh`. Dans l'ordre, il :
+
+- lance les tests de l'outil ;
+- signe l'app avec la seule identité « Developer ID Application » du trousseau (runtime renforcé, horodatage) ;
+- la fait notariser avec le profil de trousseau de `notarytool` nommé par `PROFIL_NOTARISATION`, agrafe le ticket et la fait vérifier par Gatekeeper ;
+- refuse de livrer une archive qui contient un chemin personnel ou une valeur de `garde.local.txt`. Le contrôle lit une copie dépouillée de ses signatures.
+
+`--repetition` répète la même chaîne sous l'identifiant `io.github.djoko-cli.jalons.repetition` ; seule une répétition peut signer en ad hoc (`IDENTITE_SIGNATURE=-`) ou se passer de la notarisation (`NOTARISER=0`). L'outil vient de macstatusd, du même auteur.
 
 ### Garde anti-fuite
 
