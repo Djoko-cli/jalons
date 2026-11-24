@@ -1,5 +1,17 @@
 # Notes de version / Release notes
 
+## 0.3.1
+
+### English
+
+- **Timelines come back after quitting:** quitting Jalons no longer forgets which timelines were open; they reopen at the next launch. Only closing a timeline (its close button or ⌘W) keeps it hidden.
+- **Dragging a timeline to another screen:** the timeline stays under the pointer. On macOS 27 it used to jump to the same relative place on the new screen, away from the pointer.
+
+### Français
+
+- **Les frises reviennent après avoir quitté :** quitter Jalons n'oublie plus les frises ouvertes ; elles se rouvrent au lancement suivant. Seule la fermeture d'une frise (son bouton de fermeture ou ⌘W) la garde masquée.
+- **Glisser une frise vers un autre écran :** la frise reste sous le curseur. Sous macOS 27, elle sautait au même endroit relatif sur le nouvel écran, loin du curseur.
+
 ## 0.3.0
 
 ### English
