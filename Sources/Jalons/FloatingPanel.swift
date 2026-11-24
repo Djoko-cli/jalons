@@ -43,8 +43,12 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
         window = nil
     }
 
-    func windowWillClose(_ notification: Notification) {
+    /// Seul un geste de fermeture (bouton de fermeture, ⌘W) passe par ici : la frise est retenue masquée. La fermeture
+    /// que l'app impose à ses fenêtres en quittant ne passe que par `windowWillClose`, et ne change rien à la frise à
+    /// rouvrir au prochain lancement.
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
         tracker?.panelVisibilityChanged(false)
+        return true
     }
 
     private func makePanel() -> NSPanel {

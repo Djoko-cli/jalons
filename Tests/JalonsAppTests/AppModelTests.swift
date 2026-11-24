@@ -101,4 +101,25 @@ private final class Bench {
         #expect(bench.model.trackers.map(\.specURL.lastPathComponent) == ["b.md"])
         #expect(bench.model.trackers[0].isPanelVisible == false)
     }
+
+    /// Quitter ferme les fenêtres de l'app (`close()`, sans `windowShouldClose`) : la frise reste à rouvrir au prochain
+    /// lancement. Seul un geste de fermeture (`performClose`, celui du bouton et de ⌘W) la retient masquée.
+    @Test func onlyACloseGestureHidesTheTimeline() throws {
+        let bench = try Bench()
+        defer { bench.tearDown() }
+        bench.model.start()
+        let a = try bench.spec("a.md")
+        bench.model.add(a)
+        let tracker = try #require(bench.model.trackers.first)
+        let path = a.standardizedFileURL.path
+        #expect(bench.saved?.visible.contains(path) == true, "frise visible avant toute fermeture")
+
+        try #require(tracker.panelWindow).close()
+        #expect(bench.saved?.visible.contains(path) == true, "la fermeture imposée en quittant l'a retenue masquée")
+
+        tracker.showPanel()
+        try #require(tracker.panelWindow).performClose(nil)
+        #expect(tracker.isPanelVisible == false)
+        #expect(bench.saved?.visible.contains(path) == false, "le geste de fermeture ne l'a pas retenue masquée")
+    }
 }
