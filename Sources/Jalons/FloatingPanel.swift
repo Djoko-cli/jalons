@@ -199,17 +199,27 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
         return panel
     }
 
-    /// Première ouverture : en haut à droite de l'écran du pointeur, à gauche des frises déjà visibles sur cet écran
-    /// (voir `PanelPlacement`). Une capture de mise au point ignore le pointeur : elle se fait sur l'écran principal,
-    /// la même d'une fois à l'autre.
+    /// La place de la frise, même masquée : celle de sa fenêtre, ou, avant sa première ouverture, celle qui est retenue.
+    var knownFrame: NSRect? {
+        if let window { return window.frame }
+        guard remembersFrame else { return nil }
+        // Redimensionnable : sinon AppKit ne reprend que la position retenue, et la taille reste nulle.
+        let probe = NSWindow(contentRect: .zero, styleMask: [.titled, .resizable], backing: .buffered, defer: true)
+        probe.isReleasedWhenClosed = false
+        return ([frameName] + fallbackFrameNames).contains(where: { probe.setFrameUsingName($0) }) ? probe.frame : nil
+    }
+
+    /// Première ouverture : en haut à droite de l'écran du pointeur, à gauche des places des autres frises sur cet
+    /// écran, masquées comprises, pour que rien ne se recouvre quand elles reviennent (voir `PanelPlacement`). Une
+    /// capture de mise au point ignore le pointeur : elle se fait sur l'écran principal, le même d'une fois à l'autre.
     private func placeTopRight(_ panel: NSPanel) {
         let screens = NSScreen.screens.map { PanelPlacement.Screen(frame: $0.frame, visibleFrame: $0.visibleFrame) }
         let capturing = tracker?.model?.options.snapshotDirectory != nil
-        let occupied = (tracker?.model?.trackers ?? []).compactMap(\.panelWindow)
-            .filter { $0 !== panel && $0.isVisible }.map(\.frame)
+        let occupied = (tracker?.model?.trackers ?? []).filter { $0 !== tracker }.compactMap(\.knownPanelFrame)
         guard let origin = PanelPlacement.topRight(size: panel.frame.size,
                                                    mouse: capturing ? nil : NSEvent.mouseLocation, screens: screens,
-                                                   fallback: NSScreen.main?.visibleFrame, occupied: occupied) else {
+                                                   fallback: NSScreen.screens.first?.visibleFrame,
+                                                   occupied: occupied) else {
             panel.center()
             return
         }

@@ -27,6 +27,8 @@ final class RoadmapTracker: Identifiable {
     var specURL: URL { URL(fileURLWithPath: path) }
     var menuTitle: String { Presentation.roadmapMenuTitle(state, specName: specURL.lastPathComponent) }
     var panelWindow: NSPanel? { panel.window }
+    /// La place de la frise, même masquée (voir `FloatingPanelController.knownFrame`).
+    var knownPanelFrame: NSRect? { panel.knownFrame }
     /// Le nom sous lequel la taille et la place de la frise sont retenues.
     var frameName: String { Self.frameName(for: path) }
 

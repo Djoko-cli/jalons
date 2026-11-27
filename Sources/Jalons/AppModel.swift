@@ -112,8 +112,12 @@ final class AppModel {
 
     /// Les fichiers que le système ouvre dans Jalons (`open -a Jalons`, « Ouvrir avec ») : chacun suit le chemin du
     /// menu. Un fichier refusé (ni Markdown ni texte) n'est pas suivi, et l'alerte sonne une fois, pour qu'un clic sans
-    /// effet ne passe pas pour un oubli.
+    /// effet ne passe pas pour un oubli. Une mise au point (`-specPath`, capture) suit sa seule spec : elle refuse tout.
     func receive(_ urls: [URL]) {
+        guard persists else {
+            if !urls.isEmpty { alert() }
+            return
+        }
         let accepted = urls.filter(SpecIntake.accepts)
         for url in accepted { add(url) }
         if accepted.count < urls.count { alert() }

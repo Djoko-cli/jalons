@@ -92,17 +92,7 @@ PLIST
 
 plutil -lint "$APP/Contents/Info.plist"
 # Jalons s'offre pour le seul Markdown, au rang « Alternate » : dans « Ouvrir avec », jamais l'app par défaut.
-lire_plist() { /usr/libexec/PlistBuddy -c "Print :$1" "$APP/Contents/Info.plist" 2>/dev/null || true; }
-RANG=$(lire_plist CFBundleDocumentTypes:0:LSHandlerRank)
-TYPE=$(lire_plist CFBundleDocumentTypes:0:LSItemContentTypes:0)
-AUTRE_TYPE=$(lire_plist CFBundleDocumentTypes:0:LSItemContentTypes:1)
-AUTRE_DECLARATION=$(lire_plist CFBundleDocumentTypes:1)
-if [ "$RANG" != "Alternate" ] || [ "$TYPE" != "net.daringfireball.markdown" ] \
-    || [ -n "$AUTRE_TYPE" ] || [ -n "$AUTRE_DECLARATION" ]; then
-    echo "ERREUR : l'Info.plist doit déclarer le seul Markdown, au rang Alternate (jamais app par défaut) ;" \
-        "lu : rang « $RANG », type « $TYPE », autre type « $AUTRE_TYPE »" >&2
-    exit 1
-fi
+/bin/bash scripts/verifier-plist.sh "$APP/Contents/Info.plist"
 codesign --force --sign - --timestamp=none "$APP"
 codesign --verify --strict "$APP"
 echo "OK : $APP ($VERSION)"

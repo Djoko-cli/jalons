@@ -11,12 +11,19 @@ private final class Bench {
     let folder: URL
     let model: AppModel
 
-    init() throws {
+    /// `debugSpec` : le nom d'une spec à suivre seule, comme une mise au point (`-specPath`).
+    init(debugSpec: String? = nil) throws {
         _ = NSApplication.shared
         folder = URL(fileURLWithPath: canonicalPath(FileManager.default.temporaryDirectory))
             .appendingPathComponent("jalons-modele-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        model = AppModel(options: LaunchOptions(arguments: ["Jalons", "-settingsSuite", suite, "-noWatch"]))
+        var arguments = ["Jalons", "-settingsSuite", suite, "-noWatch"]
+        if let debugSpec {
+            let url = folder.appendingPathComponent(debugSpec)
+            try "# \(debugSpec)\n\n- [ ] Phase 1 : socle\n".write(to: url, atomically: true, encoding: .utf8)
+            arguments += ["-specPath", url.path]
+        }
+        model = AppModel(options: LaunchOptions(arguments: arguments))
     }
 
     func spec(_ name: String) throws -> URL {
@@ -143,7 +150,79 @@ private final class Bench {
         // Les deux frises s'ouvrent sur l'écran du pointeur, la seconde à gauche de la première.
         let frames = bench.model.trackers.compactMap(\.panelWindow?.frame)
         try #require(frames.count == 2)
-        #expect(!frames[0].intersects(frames[1]), "les deux frises se recouvrent : \(frames)")
+        #expect(frames[1].maxX <= frames[0].minX, "la seconde frise n'est pas à gauche de la première : \(frames)")
+    }
+
+    /// Une frise masquée garde sa place : une frise nouvelle ne la prend pas, et rien ne se recouvre quand on réaffiche.
+    @Test func aHiddenTimelineKeepsItsPlaceFromANewOne() throws {
+        let bench = try Bench()
+        defer { bench.tearDown() }
+        bench.model.start()
+        let a = try bench.spec("a.md")
+        let b = try bench.spec("b.md")
+        bench.model.receive([a])
+        let hidden = try #require(bench.model.trackers.first?.panelWindow)
+        hidden.performClose(nil)
+        bench.model.receive([b])
+        let opened = try #require(bench.model.trackers.last?.panelWindow?.frame)
+        #expect(!opened.intersects(hidden.frame), "la frise nouvelle recouvre la masquée : \(opened) et \(hidden.frame)")
+    }
+
+    /// Une frise masquée lors d'un lancement précédent n'a pas encore de fenêtre, mais sa place est retenue.
+    @Test func aTimelineHiddenAtTheLastLaunchKeepsItsPlace() throws {
+        let bench = try Bench()
+        defer { bench.tearDown() }
+        let a = try bench.spec("a.md")
+        let b = try bench.spec("b.md")
+        var followed = FollowedRoadmaps()
+        followed.add(a.path)
+        followed.setVisible(a.path, false)
+        UserDefaults(suiteName: bench.suite)!.set(try JSONEncoder().encode(followed), forKey: AppModel.followedKey)
+        // La place retenue de A : là où une frise nouvelle s'ouvrirait, sur l'écran du pointeur.
+        let screens = NSScreen.screens.map { PanelPlacement.Screen(frame: $0.frame, visibleFrame: $0.visibleFrame) }
+        let size = CGSize(width: 360, height: 660)
+        let origin = try #require(PanelPlacement.topRight(size: size, mouse: NSEvent.mouseLocation, screens: screens,
+                                                          fallback: NSScreen.screens.first?.visibleFrame, occupied: []))
+        let place = NSRect(origin: origin, size: size)
+        let name = RoadmapTracker.frameName(for: a.path)
+        let probe = NSWindow(contentRect: place, styleMask: [.titled], backing: .buffered, defer: true)
+        probe.setFrame(place, display: false)
+        probe.saveFrame(usingName: name)
+        defer { NSWindow.removeFrame(usingName: name) }
+        bench.model.start()
+        #expect(bench.model.trackers.first?.panelWindow == nil, "la frise masquée a déjà une fenêtre")
+        bench.model.receive([b])
+        let opened = try #require(bench.model.trackers.last?.panelWindow?.frame)
+        #expect(!opened.intersects(place), "la frise nouvelle prend la place retenue de la masquée : \(opened)")
+    }
+
+    /// Une mise au point (`-specPath`, capture) suit sa seule spec : un fichier reçu n'est pas suivi, et l'alerte sonne.
+    @Test func aDebugInstanceRefusesReceivedFiles() throws {
+        let bench = try Bench(debugSpec: "seule.md")
+        defer { bench.tearDown() }
+        let alerts = Alerts()
+        bench.model.alert = { alerts.count += 1 }
+        bench.model.start()
+        let b = try bench.spec("b.md")
+        bench.model.receive([b])
+        #expect(bench.model.trackers.map(\.specURL.lastPathComponent) == ["seule.md"])
+        #expect(alerts.count == 1)
+    }
+
+    /// La boîte filtre comme le modèle : une image passée par la boîte n'est pas suivie, et l'alerte sonne.
+    @Test func theInboxFiltersLikeTheModel() throws {
+        let bench = try Bench()
+        defer { bench.tearDown() }
+        let alerts = Alerts()
+        bench.model.alert = { alerts.count += 1 }
+        bench.model.start()
+        let image = bench.folder.appendingPathComponent("capture.png")
+        try Data([0x89, 0x50, 0x4E, 0x47]).write(to: image)
+        let inbox = SpecInbox()
+        inbox.connect(to: bench.model)
+        inbox.receive([image])
+        #expect(bench.model.trackers.isEmpty)
+        #expect(alerts.count == 1)
     }
 
     @Test func theSameSpecTwiceInOneBatchIsFollowedOnce() throws {

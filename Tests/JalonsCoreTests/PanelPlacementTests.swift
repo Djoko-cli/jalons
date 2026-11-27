@@ -37,6 +37,16 @@ import Testing
         #expect(place(mouse: CGPoint(x: 1920, y: 700)) == CGPoint(x: 4104, y: 734))
     }
 
+    /// Deux écrans empilés : y = 0 est le bord bas du principal et le bord haut de celui du dessous ; il appartient à
+    /// celui du dessous (comme `NSMouseInRect`).
+    @Test func theSharedEdgeOfStackedScreensBelongsToTheLowerOne() {
+        let below = PanelPlacement.Screen(frame: CGRect(x: 0, y: -1080, width: 1920, height: 1080),
+                                          visibleFrame: CGRect(x: 0, y: -1080, width: 1920, height: 1080))
+        let placed = PanelPlacement.topRight(size: size, mouse: CGPoint(x: 100, y: 0), screens: [main, below],
+                                             fallback: main.visibleFrame, occupied: [])
+        #expect(placed == CGPoint(x: 1544, y: -676))
+    }
+
     @Test func thePointerOnTheMainScreenKeepsTheTimelineThere() {
         #expect(place(mouse: CGPoint(x: 100, y: 100)) == CGPoint(x: 1920 - 376, y: 1050 - 676))
     }
