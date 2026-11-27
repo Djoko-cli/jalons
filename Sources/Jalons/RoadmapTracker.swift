@@ -12,8 +12,6 @@ final class RoadmapTracker: Identifiable {
     /// La surveillance des fichiers n'a pas pu démarrer : relecture de secours chaque minute, et avertissement affiché.
     private(set) var watchUnavailable = false
 
-    /// Rang de la frise à sa première ouverture (voir `FloatingPanelController`).
-    @ObservationIgnored let cascadeIndex: Int
     @ObservationIgnored private(set) weak var model: AppModel?
     @ObservationIgnored private let options: LaunchOptions
     @ObservationIgnored private var watcher: FileWatcher?
@@ -36,15 +34,12 @@ final class RoadmapTracker: Identifiable {
 
     /// `fallbackFrameNames` : des places retenues sous d'autres noms, reprises si la spec n'a pas encore la sienne
     /// (celle d'avant les frises multiples, ou celle de la spec remplacée). `remembersFrame` : faux en mise au point.
-    init(path: String, model: AppModel, options: LaunchOptions, fallbackFrameNames: [String], remembersFrame: Bool,
-         cascadeIndex: Int) {
+    init(path: String, model: AppModel, options: LaunchOptions, fallbackFrameNames: [String], remembersFrame: Bool) {
         self.path = path
         self.model = model
         self.options = options
-        self.cascadeIndex = cascadeIndex
         panel = FloatingPanelController(tracker: self, frameName: Self.frameName(for: path),
-                                        fallbackFrameNames: fallbackFrameNames, remembersFrame: remembersFrame,
-                                        cascadeIndex: cascadeIndex)
+                                        fallbackFrameNames: fallbackFrameNames, remembersFrame: remembersFrame)
     }
 
     func start() {

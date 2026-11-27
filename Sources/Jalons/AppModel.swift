@@ -75,13 +75,12 @@ final class AppModel {
         defaults.set(data, forKey: Self.followedKey)
     }
 
-    /// Un suivi de plus, au premier rang de cascade libre pour que sa frise ne recouvre pas celle d'une autre.
+    /// Un suivi de plus. Sa frise, à sa première ouverture, se pose à gauche de celles déjà visibles sur son écran
+    /// (voir `FloatingPanelController`).
     private func makeTracker(_ path: String, fallbackFrameNames: [String] = []) -> RoadmapTracker {
         let legacy = defaults.string(forKey: Self.legacySpecPathKey) == path ? [Self.legacyFrameName] : []
-        let used = Set(trackers.map(\.cascadeIndex))
-        let index = (0...).first { !used.contains($0) } ?? trackers.count
         return RoadmapTracker(path: path, model: self, options: options, fallbackFrameNames: fallbackFrameNames + legacy,
-                              remembersFrame: persists, cascadeIndex: index)
+                              remembersFrame: persists)
     }
 
     /// Le chemin enregistré dans la liste suivie et affiché.

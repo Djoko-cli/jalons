@@ -121,16 +121,12 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
     private let fallbackFrameNames: [String]
     /// Faux en mise au point (`-specPath`) : la place de la frise n'est pas enregistrée.
     private let remembersFrame: Bool
-    /// Rang de la frise à sa première ouverture : chaque nouvelle frise se pose à gauche de la précédente.
-    private let cascadeIndex: Int
 
-    init(tracker: RoadmapTracker, frameName: String, fallbackFrameNames: [String], remembersFrame: Bool,
-         cascadeIndex: Int) {
+    init(tracker: RoadmapTracker, frameName: String, fallbackFrameNames: [String], remembersFrame: Bool) {
         self.tracker = tracker
         self.frameName = frameName
         self.fallbackFrameNames = fallbackFrameNames
         self.remembersFrame = remembersFrame
-        self.cascadeIndex = cascadeIndex
     }
 
     func show() {
@@ -203,14 +199,20 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
         return panel
     }
 
-    /// Première ouverture : en haut à droite de l'écran principal, à gauche des frises ouvertes avant elle.
+    /// Première ouverture : en haut à droite de l'écran du pointeur, à gauche des frises déjà visibles sur cet écran
+    /// (voir `PanelPlacement`). Une capture de mise au point ignore le pointeur : elle se fait sur l'écran principal,
+    /// la même d'une fois à l'autre.
     private func placeTopRight(_ panel: NSPanel) {
-        guard let visible = NSScreen.main?.visibleFrame else {
+        let screens = NSScreen.screens.map { PanelPlacement.Screen(frame: $0.frame, visibleFrame: $0.visibleFrame) }
+        let capturing = tracker?.model?.options.snapshotDirectory != nil
+        let occupied = (tracker?.model?.trackers ?? []).compactMap(\.panelWindow)
+            .filter { $0 !== panel && $0.isVisible }.map(\.frame)
+        guard let origin = PanelPlacement.topRight(size: panel.frame.size,
+                                                   mouse: capturing ? nil : NSEvent.mouseLocation, screens: screens,
+                                                   fallback: NSScreen.main?.visibleFrame, occupied: occupied) else {
             panel.center()
             return
         }
-        let step = panel.frame.width + 16
-        let x = max(visible.minX + 16, visible.maxX - step - CGFloat(cascadeIndex) * step)
-        panel.setFrameOrigin(NSPoint(x: x, y: visible.maxY - panel.frame.height - 16))
+        panel.setFrameOrigin(origin)
     }
 }
