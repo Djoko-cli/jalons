@@ -1,6 +1,10 @@
 #!/bin/bash
 # Refuse le commit si les noms des fichiers ou les lignes ajoutées (binaires et
 # changements de type compris) contiennent une fuite (voir garde-commun.sh).
+# Puis lance, s'il existe, .githooks/controles-depot.sh, propre au dépôt (versionné dans le
+# dépôt, hors du lot identique) : il reçoit GARDE_AJOUTS (lignes ajoutées ; sur une fusion,
+# seulement celles que la résolution ajoute) et GARDE_NOMS (fichiers indexés), et un code non
+# nul refuse le commit. Le garde anti-fuite, lui, examine toujours tout l'index.
 set -u -o pipefail
 . "$(dirname "$0")/garde-commun.sh" || exit 1   # les fonctions du même garde que ce crochet
 garde_debut pre-commit
@@ -15,4 +19,46 @@ if [ -n "$raisons" ]; then
   printf '%s\n' "$raisons" | sed 's/^/pre-commit : /' >&2
   echo "Commit refusé. Relis le diff : git diff --cached" >&2
   exit 1
+fi
+
+# Contrôles propres au dépôt (task-observer 0254) : une barrière, pas un affichage.
+controles="$(git rev-parse --show-toplevel)/.githooks/controles-depot.sh"
+if [ -e "$controles" ]; then
+  if [ ! -x "$controles" ]; then
+    echo "pre-commit : .githooks/controles-depot.sh existe mais n'est pas exécutable : commit refusé" >&2
+    exit 1
+  fi
+  ajouts="$garde_tmp/ajouts"; noms="$garde_tmp/noms"
+  ajouts_de() { # $1 (facultatif) : commit de comparaison ; lignes ajoutées de l'index, triées
+    git diff --cached -U0 --text --no-color --no-ext-diff --no-textconv --diff-filter=ACMRT "$@" |
+      tr -d '\000' | garde_ajouts | LC_ALL=C sort
+  }
+  if ! git diff --cached -z --name-only --diff-filter=ACMRT | tr '\000' '\n' > "$noms"; then
+    echo "pre-commit : lecture de l'index impossible : commit refusé" >&2
+    exit 1
+  fi
+  fusion="$(git rev-parse --git-path MERGE_HEAD)"
+  if [ -s "$fusion" ]; then
+    # une ligne de la résolution est neuve par rapport à chaque parent ; une ligne venue de
+    # l'autre branche existe déjà dans ce parent-là
+    if ! ajouts_de HEAD > "$ajouts"; then
+      echo "pre-commit : lecture de la fusion impossible : commit refusé" >&2
+      exit 1
+    fi
+    while read -r parent; do
+      [ -n "$parent" ] || continue
+      if ! ajouts_de "$parent" > "$ajouts.p" || ! LC_ALL=C comm -12 "$ajouts" "$ajouts.p" > "$ajouts.i"; then
+        echo "pre-commit : lecture de la fusion impossible : commit refusé" >&2
+        exit 1
+      fi
+      mv "$ajouts.i" "$ajouts"
+    done < "$fusion"
+  elif ! ajouts_de > "$ajouts"; then
+    echo "pre-commit : lecture de l'index impossible : commit refusé" >&2
+    exit 1
+  fi
+  if ! GARDE_AJOUTS="$ajouts" GARDE_NOMS="$noms" "$controles"; then
+    echo "pre-commit : contrôles du dépôt (.githooks/controles-depot.sh) en échec : commit refusé" >&2
+    exit 1
+  fi
 fi

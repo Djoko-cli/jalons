@@ -160,6 +160,33 @@ ln -s base.txt lien; git add lien; lien=$(echo lien | git commit-tree "$(fige)" 
 rm lien; printf 'hote %s\n' "$ip" > lien; git add lien; cas "14. lien remplacé par un fichier fautif (statut T)" refusé
 git reset -q --hard "$base"
 
+echo "-- contrôles du dépôt (.githooks/controles-depot.sh, task-observer 0254)"
+marque="MARQ""UE-DEPOT"   # assemblée : le contrôle d'essai lui-même ne la contient pas telle quelle
+ecrit_controles() { # contrôle d'essai : refuse une ligne ajoutée qui porte la marque ; garde ce qu'il a reçu
+  printf '#!/bin/bash\nm="MARQ""UE-DEPOT"\ncp "$GARDE_AJOUTS" "%s/recu-ajouts" && cp "$GARDE_NOMS" "%s/recu-noms" || exit 9\nif grep -qF "$m" "$GARDE_AJOUTS"; then echo "controle d essai : marque trouvee" >&2; exit 1; fi\n' "$tmp" "$tmp" > .githooks/controles-depot.sh
+  chmod +x .githooks/controles-depot.sh
+}
+ecrit_controles; printf 'ligne %s\n' "$marque" > c.txt; git add c.txt
+raison="marque trouvee"; cas "15a. contrôle du dépôt : ligne ajoutée refusée" refusé
+ecrit_controles; echo propre > c.txt; git add c.txt; cas "15b. contrôle du dépôt : commit propre accepté" accepté
+if grep -qx c.txt "$tmp/recu-noms" && grep -qx propre "$tmp/recu-ajouts"; then r=reçus; else r=absents; fi
+note "15c. GARDE_NOMS et GARDE_AJOUTS reçus par le contrôle" "$r" reçus
+ecrit_controles; chmod -x .githooks/controles-depot.sh; echo propre > c.txt; git add c.txt
+raison="pas exécutable"; cas "15d. contrôle présent mais non exécutable" refusé
+printf '#!/bin/bash\nexit 3\n' > .githooks/controles-depot.sh; chmod +x .githooks/controles-depot.sh; echo propre > c.txt; git add c.txt
+raison="contrôles du dépôt"; cas "15e. contrôle en échec sans message" refusé
+printf 'venue %s\n' "$marque" > autre.txt; f_autre=$(echo autre | git commit-tree "$(fige)" -p "$base")
+echo principal > p.txt; f_princ=$(echo principal | git commit-tree "$(fige)" -p "$base")
+prepare_fusion() { git reset -q --hard "$f_princ" && git merge -q --no-ff --no-commit "$1" > /dev/null 2>&1; ecrit_controles; }
+prepare_fusion "$f_autre"; cas "15f. fusion : ligne venue de l'autre branche non contrôlée" accepté git commit -q -m fusion
+if grep -qF "$marque" "$tmp/recu-ajouts" || grep -qx principal "$tmp/recu-ajouts"; then r=présentes; else r=absentes; fi
+note "15g. fusion : lignes des deux parents absentes de GARDE_AJOUTS" "$r" absentes
+prepare_fusion "$f_autre"; printf 'resolution %s\n' "$marque" > resolution.txt; git add resolution.txt
+raison="marque trouvee"; cas "15h. fusion : ligne de la résolution contrôlée" refusé git commit -q -m fusion
+printf 'hote %s\n' "$ip" > fuite.txt; f_fuite=$(echo fuite | git commit-tree "$(fige)" -p "$base")
+prepare_fusion "$f_fuite"; raison="adresse IP privée"; cas "15i. fusion : le garde anti-fuite lit toute la fusion" refusé git commit -q -m fusion
+git reset -q --hard "$base"
+
 echo "-- push (pre-push)"
 pousse "P0. historique propre, branche neuve sans remote" accepté "refs/heads/main $base refs/heads/main $z"
 pousse "P1. commit poussé contenant une IP privée" refusé "refs/heads/x $fuite refs/heads/x $base"
