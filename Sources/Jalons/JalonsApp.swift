@@ -4,11 +4,13 @@ import SwiftUI
 
 @main
 struct JalonsApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var model: AppModel
 
     init() {
         let model = AppModel(options: LaunchOptions.current)
         model.start()
+        SpecInbox.shared.connect(to: model)
         _model = State(initialValue: model)
     }
 

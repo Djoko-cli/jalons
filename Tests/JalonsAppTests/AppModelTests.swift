@@ -122,4 +122,88 @@ private final class Bench {
         #expect(tracker.isPanelVisible == false)
         #expect(bench.saved?.visible.contains(path) == false, "le geste de fermeture ne l'a pas retenue masquée")
     }
+
+    // MARK: Specs ouvertes par le système (`open -a Jalons`, « Ouvrir avec »)
+
+    final class Alerts { var count = 0 }
+
+    @Test func specsOpenedTogetherAreAllFollowedAndShown() throws {
+        let bench = try Bench()
+        defer { bench.tearDown() }
+        let alerts = Alerts()
+        bench.model.alert = { alerts.count += 1 }
+        bench.model.start()
+        let a = try bench.spec("a.md")
+        let b = try bench.spec("b.md")
+        bench.model.receive([a, b])
+        #expect(bench.model.trackers.map(\.specURL.lastPathComponent) == ["a.md", "b.md"])
+        #expect(bench.model.trackers.map(\.isPanelVisible) == [true, true])
+        #expect(bench.saved?.paths.count == 2)
+        #expect(alerts.count == 0, "aucune alerte pour des specs acceptées")
+        // Les deux frises s'ouvrent sur l'écran du pointeur, la seconde à gauche de la première.
+        let frames = bench.model.trackers.compactMap(\.panelWindow?.frame)
+        try #require(frames.count == 2)
+        #expect(!frames[0].intersects(frames[1]), "les deux frises se recouvrent : \(frames)")
+    }
+
+    @Test func theSameSpecTwiceInOneBatchIsFollowedOnce() throws {
+        let bench = try Bench()
+        defer { bench.tearDown() }
+        let alerts = Alerts()
+        bench.model.alert = { alerts.count += 1 }
+        bench.model.start()
+        let a = try bench.spec("a.md")
+        bench.model.receive([a, a])
+        #expect(bench.model.trackers.count == 1)
+        #expect(bench.saved?.paths.count == 1)
+        #expect(alerts.count == 0)
+    }
+
+    /// La boîte branchée sur le modèle : un fichier ouvert par le système suit le chemin de `receive`.
+    @Test func theInboxConnectedToTheModelFollowsWhatItReceives() throws {
+        let bench = try Bench()
+        defer { bench.tearDown() }
+        bench.model.start()
+        let a = try bench.spec("a.md")
+        let inbox = SpecInbox()
+        inbox.connect(to: bench.model)
+        inbox.receive([a])
+        #expect(bench.model.trackers.map(\.specURL.lastPathComponent) == ["a.md"])
+    }
+
+    @Test func aSpecAlreadyFollowedIsShownAgainNotFollowedTwice() throws {
+        let bench = try Bench()
+        defer { bench.tearDown() }
+        bench.model.start()
+        let a = try bench.spec("a.md")
+        bench.model.add(a)
+        let tracker = try #require(bench.model.trackers.first)
+        let window = try #require(tracker.panelWindow)
+        window.setFrameOrigin(NSPoint(x: window.frame.minX - 40, y: window.frame.minY - 40))
+        let placed = window.frame
+        window.performClose(nil)
+        #expect(tracker.isPanelVisible == false)
+        bench.model.receive([a])
+        #expect(bench.model.trackers.count == 1)
+        #expect(tracker.isPanelVisible)
+        // Une frise qui a déjà une place revient à cette place : rien ne la déplace.
+        #expect(tracker.panelWindow?.frame == placed, "frise déplacée : \(String(describing: tracker.panelWindow?.frame)) au lieu de \(placed)")
+    }
+
+    /// Un fichier refusé n'empêche pas de suivre ceux qui l'accompagnent, et l'alerte ne sonne qu'une fois.
+    @Test func refusedFilesAreNotFollowedAndSoundTheAlertOnce() throws {
+        let bench = try Bench()
+        defer { bench.tearDown() }
+        let alerts = Alerts()
+        bench.model.alert = { alerts.count += 1 }
+        bench.model.start()
+        let image = bench.folder.appendingPathComponent("capture.png")
+        try Data([0x89, 0x50, 0x4E, 0x47]).write(to: image)
+        let other = bench.folder.appendingPathComponent("autre.png")
+        try Data([0x89, 0x50, 0x4E, 0x47]).write(to: other)
+        let a = try bench.spec("a.md")
+        bench.model.receive([image, a, other])
+        #expect(bench.model.trackers.map(\.specURL.lastPathComponent) == ["a.md"])
+        #expect(alerts.count == 1)
+    }
 }

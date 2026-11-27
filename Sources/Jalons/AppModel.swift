@@ -107,6 +107,18 @@ final class AppModel {
         tracker.showPanel()
     }
 
+    /// Le son d'alerte du système ; remplacé dans les tests.
+    @ObservationIgnored var alert: () -> Void = { NSSound.beep() }
+
+    /// Les fichiers que le système ouvre dans Jalons (`open -a Jalons`, « Ouvrir avec ») : chacun suit le chemin du
+    /// menu. Un fichier refusé (ni Markdown ni texte) n'est pas suivi, et l'alerte sonne une fois, pour qu'un clic sans
+    /// effet ne passe pas pour un oubli.
+    func receive(_ urls: [URL]) {
+        let accepted = urls.filter(SpecIntake.accepts)
+        for url in accepted { add(url) }
+        if accepted.count < urls.count { alert() }
+    }
+
     func addInteractively() {
         for url in pickSpecs(title: "Ajouter des feuilles de route", prompt: "Suivre", multiple: true) { add(url) }
     }
