@@ -1,5 +1,17 @@
 # Notes de version / Release notes
 
+## 0.4.0
+
+### English
+
+- **Hand a spec to Jalons from outside:** `open -g -a Jalons <spec>`, or **Open With › Jalons** in the Finder for a Markdown file, follows the spec and shows its timeline, as the menu does. A spec already followed simply shows its own, where it was. A file that is neither Markdown nor plain text is not followed, and the system alert sounds. Jalons is never the default app for Markdown files.
+- **New timelines open where you are:** a timeline that has no saved place yet opens at the top right of the screen under the pointer, instead of the main screen, left of the timelines already shown on that screen.
+
+### Français
+
+- **Donner une spec à Jalons depuis l'extérieur :** `open -g -a Jalons <spec>`, ou **Ouvrir avec › Jalons** dans le Finder pour un fichier Markdown, suit la spec et affiche sa frise, comme le menu. Une spec déjà suivie montre simplement la sienne, à sa place. Un fichier qui n'est ni Markdown ni texte brut n'est pas suivi, et le son d'alerte du système retentit. Jalons ne devient jamais l'app par défaut des fichiers Markdown.
+- **Les frises nouvelles s'ouvrent là où tu es :** une frise qui n'a pas encore de place s'ouvre en haut à droite de l'écran du pointeur, au lieu de l'écran principal, à gauche des frises déjà visibles sur cet écran.
+
 ## 0.3.1
 
 ### English

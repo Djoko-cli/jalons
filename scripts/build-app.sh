@@ -7,7 +7,7 @@
 # Le chemin absolu de l'app est imprimé sur la dernière ligne (scripts/publication.py le lit).
 set -euo pipefail
 
-VERSION="0.3.1"
+VERSION="0.4.0"
 BUNDLE_ID="io.github.djoko-cli.jalons"
 SORTIE="build"
 

@@ -60,6 +60,8 @@ open build/Jalons.app
 
 Then add one or more specs in the menu: « Ajouter une feuille de route… ». The first one added is the main one.
 
+A spec can also be handed to Jalons from outside, for instance by a script or a coding assistant session that has just finished it: `open -g -a Jalons <spec>` in a terminal (`-g` leaves the keyboard to the app you are in), or **Open With › Jalons** in the Finder for a Markdown file. Jalons follows it and shows its timeline, as the menu does; a spec already followed simply shows its own, where it was. A file that is neither Markdown nor plain text is not followed, and the system alert sounds. Jalons is never the default app for Markdown files. A new timeline opens at the top right of the screen under the pointer, left of the timelines already shown on that screen.
+
 The script compiles the app icon (`Ressources/AppIcon.icon`, an Icon Composer file) with `actool`, and stops if the icon is missing. Its only layer is drawn by a script: `swift scripts/dessiner-icone.swift Ressources/AppIcon.icon/Assets/jalon.png`.
 
 ### Tests
@@ -175,6 +177,8 @@ open build/Jalons.app
 ```
 
 Ajoute ensuite une ou plusieurs specs dans le menu : « Ajouter une feuille de route… ». La première ajoutée est la principale.
+
+Une spec peut aussi être donnée à Jalons depuis l'extérieur, par exemple par un script ou par la session d'un assistant de code qui vient de la finir : `open -g -a Jalons <spec>` dans un terminal (`-g` laisse le clavier à l'app où tu es), ou **Ouvrir avec › Jalons** dans le Finder pour un fichier Markdown. Jalons la suit et affiche sa frise, comme le menu ; une spec déjà suivie montre simplement la sienne, à sa place. Un fichier qui n'est ni Markdown ni texte brut n'est pas suivi, et le son d'alerte du système retentit. Jalons ne devient jamais l'app par défaut des fichiers Markdown. Une frise nouvelle s'ouvre en haut à droite de l'écran du pointeur, à gauche des frises déjà visibles sur cet écran.
 
 Le script compile l'icône de l'app (`Ressources/AppIcon.icon`, un fichier Icon Composer) avec `actool`, et s'arrête si elle manque. Son unique calque est dessiné par un script : `swift scripts/dessiner-icone.swift Ressources/AppIcon.icon/Assets/jalon.png`.
 
