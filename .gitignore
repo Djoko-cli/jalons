@@ -12,3 +12,4 @@ DerivedData/
 *.log
 .superpowers/
 .DS_Store
+__pycache__/
