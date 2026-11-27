@@ -28,10 +28,13 @@ private final class FakeMouse {
 
     private func mainScreen() throws -> NSScreen { try #require(NSScreen.screens.first) }
 
-    /// Une frise de 360 × 660 au milieu du premier écran, et la prise d'un glissement par sa barre de titre.
+    /// Une frise de 360 × 660 au milieu du premier écran, et la prise d'un glissement par sa barre de titre. Le cadre est
+    /// posé sur des points entiers : une zone utile de hauteur impaire (Dock de 73 points) mettait le milieu sur un
+    /// demi-point, qu'AppKit arrondit, et faisait échouer toute comparaison de cadres.
     private func start() throws -> (TimelinePanel, NSRect) {
         let visible = try mainScreen().visibleFrame
-        let frame = NSRect(x: visible.midX - 180, y: visible.midY - 330, width: 360, height: 660)
+        let frame = NSRect(x: (visible.midX - 180).rounded(.down), y: (visible.midY - 330).rounded(.down),
+                           width: 360, height: 660)
         let panel = panel(at: frame)
         mouse.location = CGPoint(x: frame.minX + 180, y: frame.maxY - 20)
         mouse.isDown = true
@@ -43,7 +46,7 @@ private final class FakeMouse {
     /// droite : le système retient la frise contre la butée, sans la suivre à l'horizontale.
     private func pushAgainstTheTop() throws -> (TimelinePanel, NSRect, NSRect) {
         let visible = try mainScreen().visibleFrame
-        let frame = NSRect(x: visible.midX - 180, y: visible.maxY - 660 - 200, width: 360, height: 660)
+        let frame = NSRect(x: (visible.midX - 180).rounded(.down), y: visible.maxY - 660 - 200, width: 360, height: 660)
         let panel = panel(at: frame)
         mouse.location = CGPoint(x: frame.minX + 180, y: frame.maxY - 460)
         mouse.isDown = true
@@ -76,7 +79,8 @@ private final class FakeMouse {
     /// L'écart reste celui du point saisi au clic, pas celui du curseur contre ce cadre en retard.
     @Test func aLateMoveStartKeepsTheClickedPoint() throws {
         let visible = try mainScreen().visibleFrame
-        let frame = NSRect(x: visible.midX - 180, y: visible.midY - 330, width: 360, height: 660)
+        let frame = NSRect(x: (visible.midX - 180).rounded(.down), y: (visible.midY - 330).rounded(.down),
+                           width: 360, height: 660)
         let panel = panel(at: frame)
         defer { panel.close() }
         panel.noteClick(at: CGPoint(x: 180, y: 640))
@@ -89,7 +93,8 @@ private final class FakeMouse {
     /// Le clic d'un geste fini (un clic bas sur une ligne de la frise) ne sert jamais de prise au glissement suivant.
     @Test func aClickFromAFinishedGestureIsNotReused() throws {
         let visible = try mainScreen().visibleFrame
-        let frame = NSRect(x: visible.midX - 180, y: visible.midY - 330, width: 360, height: 660)
+        let frame = NSRect(x: (visible.midX - 180).rounded(.down), y: (visible.midY - 330).rounded(.down),
+                           width: 360, height: 660)
         let panel = panel(at: frame)
         defer { panel.close() }
         panel.noteClick(at: CGPoint(x: 180, y: 30))
@@ -167,7 +172,8 @@ private final class FakeMouse {
     @Test func aTimelineTallerThanTheScreenKeepsItsSize() throws {
         let visible = try mainScreen().visibleFrame
         let size = NSSize(width: 360, height: visible.height + 200)
-        let frame = NSRect(x: visible.midX - 180, y: visible.maxY - size.height, width: size.width, height: size.height)
+        let frame = NSRect(x: (visible.midX - 180).rounded(.down), y: visible.maxY - size.height,
+                           width: size.width, height: size.height)
         let panel = panel(at: frame)
         defer { panel.close() }
         mouse.location = CGPoint(x: frame.minX + 180, y: frame.maxY - 20)
